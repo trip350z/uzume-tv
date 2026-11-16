@@ -89,7 +89,7 @@ config_dir=/etc/uzume-tv
 data_dir=/var/lib/uzume-tv
 account=uzume-tv
 unit=uzume-tv.service
-files=(app.js index.html style.css manifest.webmanifest sw.js icon-192.png icon-512.png server.mjs config.mjs scheduling.mjs
+files=(app.js index.html style.css manifest.webmanifest sw.js icon-192.png icon-512.png wordmark.png server.mjs config.mjs scheduling.mjs
     mariadb-state.mjs live-captions.mjs commercials.mjs)
 for file in "${files[@]}" encode-profiles.json encode-profiles.hardware.example.json subtitle-tools/package.json subtitle-tools/package-lock.json; do
     [[ -f "$source_dir/$file" ]] || die "Keep the installer alongside the uzume-tv source files. Missing: $file"

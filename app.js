@@ -2328,7 +2328,7 @@ function renderSettings({ config, stations, canApplySettings }) {
     aboutIcon.alt = '';
     aboutIcon.width = 48;
     aboutIcon.height = 48;
-    aboutHeading.append(aboutIcon, node('span', 'UZUME TV／宇受売 TVの名前の由来'));
+    aboutHeading.append(aboutIcon, node('span', 'UZUME TVの名前の由来'));
     about.append(
         aboutHeading,
         node('p', '「UZUME」は、日本神話の天岩戸の場面で舞を披露した神、アメノウズメに由来します。'),

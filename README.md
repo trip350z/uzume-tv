@@ -1,4 +1,4 @@
-# uzume-tv（宇受売 TV）
+# UZUME TV
 
 Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画管理アプリです。Node.js 24で動作します。パッケージのインストールは不要です。
 
@@ -18,7 +18,7 @@ sudo bash install-mirakc.sh ./scanned/mirakc/config.yml
 
 YAMLを手動で用意する場合は `mirakc.config.example.yml` を参考にしてください。受信環境のインストーラーは、公式イメージからmirakcを導入し、`recisdb`、ISDBScanner、`libyakisoba`、`libsobacas`、`libaribb25` もセットアップします。mirakc一式の導入にはamd64とsystemdが必要です。`--tools-only` はamd64とarm64に対応します。mirakcは `127.0.0.1:40772` で稼働します。
 
-### 宇受売 TV本体をインストール
+### UZUME TV本体をインストール
 
 ```bash
 sudo bash install-linux.sh --tuner-url http://127.0.0.1:40772

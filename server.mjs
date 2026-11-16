@@ -1483,6 +1483,7 @@ const assets = new Map([
     ['/manifest.webmanifest', ['manifest.webmanifest', 'application/manifest+json']],
     ['/sw.js', ['sw.js', 'text/javascript']],
     ['/icon-192.png', ['icon-192.png', 'image/png']],
+    ['/wordmark.png', ['wordmark.png', 'image/png']],
     ['/icon-512.png', ['icon-512.png', 'image/png']],
     ['/scheduling.mjs', ['scheduling.mjs', 'text/javascript']]
 ]);
