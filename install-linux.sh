@@ -4,13 +4,14 @@ set -euo pipefail
 usage() {
     cat <<'EOF'
 Usage: sudo bash install-linux.sh [--tuner-url URL] [--port PORT] [--node PATH]
-                                 [--encoder nvencc|qsvencc|vceencc]
+                                 [--encoder ffmpeg|nvencc|qsvencc|vceencc]
                                  [--mirakc-config PATH] [--px4] [--arib-libs] [--recording-dir PATH]
 Installs KreuzenTV and its software dependencies on Debian or Ubuntu with systemd.
 Without --tuner-url, a new installation starts in demo mode.
 --port defaults to 8781. Tuner URL and port apply to the initial setup only.
 --node overrides automatic Node.js installation and must include npm.
---encoder installs a Linux GPU encoder package (amd64; compatible driver required).
+--encoder selects the encoder. New amd64 installs default to QSVEncC (compatible Intel GPU and driver required).
+Use --encoder ffmpeg for CPU encoding. Other architectures default to FFmpeg.
 --mirakc-config installs local mirakc from a prepared YAML configuration (amd64).
 --px4 installs px4_drv and firmware for compatible tuners; requires --mirakc-config.
 --arib-libs installs the three ARIB libraries; requires --mirakc-config.
@@ -55,12 +56,15 @@ command -v apt-get >/dev/null || die 'This installer requires Debian or Ubuntu.'
 [[ -d /run/systemd/system ]] || die 'Start Linux with systemd before installing.'
 [[ "$port" =~ ^[1-9][0-9]{0,4}$ ]] && ((port <= 65535)) || die 'Invalid port.'
 if { $px4 || $arib_libs; } && [[ -z "$mirakc_config" ]]; then die '--px4 and --arib-libs require --mirakc-config.'; fi
+arch=$(dpkg --print-architecture)
+default_encoder_choice=1
+if [[ "$arch" == amd64 ]]; then default_encoder_choice=3; fi
 if [[ -t 0 && ! -e /etc/kreuzentv/config.json ]]; then
     if [[ -z "$encoder" ]]; then
         printf '%s\n' '1) FFmpeg (CPU)  2) NVEncC  3) QSVEncC  4) VCEEncC'
         while true; do
-            read -r -p '使用するエンコーダー [1]: ' choice
-            case "${choice:-1}" in
+            read -r -p "使用するエンコーダー [$default_encoder_choice]: " choice
+            case "${choice:-$default_encoder_choice}" in
                 1) encoder=ffmpeg; break ;;
                 2) encoder=nvencc; break ;;
                 3) encoder=qsvencc; break ;;
@@ -73,6 +77,9 @@ if [[ -t 0 && ! -e /etc/kreuzentv/config.json ]]; then
         read -r -p '既定の録画保存先 [/var/lib/kreuzentv]: ' recording_dir
     fi
 fi
+if [[ -z "$encoder" && "$arch" == amd64 && ! -e /etc/kreuzentv/config.json ]]; then
+    encoder=qsvencc
+fi
 recording_dir=${recording_dir:-/var/lib/kreuzentv}
 [[ "$recording_dir" == /* ]] || die 'Specify an absolute recording directory.'
 recording_dir=$(realpath -m -- "$recording_dir")
@@ -82,9 +89,8 @@ case "$encoder" in
     nvencc) encoder_repo=NVEnc; encoder_version=9.40; encoder_key=nvencc ;;
     qsvencc) encoder_repo=QSVEnc; encoder_version=8.37; encoder_key=qsvenc ;;
     vceencc) encoder_repo=VCEEnc; encoder_version=9.22; encoder_key=vceenc ;;
-    *) die 'Invalid encoder. Choose nvencc, qsvencc or vceencc.' ;;
+    *) die 'Invalid encoder. Choose ffmpeg, nvencc, qsvencc or vceencc.' ;;
 esac
-arch=$(dpkg --print-architecture)
 [[ -z "$encoder" || "$arch" == amd64 ]] || die 'The selected GPU encoder package requires amd64.'
 
 source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)

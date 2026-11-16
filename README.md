@@ -16,7 +16,7 @@ cp mirakc.config.example.yml mirakc.local.yml
 sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml
 ```
 
-対話端末での新規セットアップでは、FFmpeg・NVEncC・QSVEncC・VCEEncCの選択と、既定の録画保存先の入力が表示されます。未入力時はFFmpegと `/var/lib/kreuzentv` です。無人実行では `--encoder ffmpeg` や `--recording-dir /mnt/Disk02/TV_REC` で指定できます。既存の保存先を使う場合は、サービスユーザー `kreuzentv` に書き込み権限が必要です。
+対話端末での新規セットアップでは、FFmpeg・NVEncC・QSVEncC・VCEEncCの選択と、既定の録画保存先の入力が表示されます。amd64での既定の録画変換エンコーダーはQSVEncC（機器互換MP4・1080p30）で、対応するIntel GPUとドライバーが必要です。他のアーキテクチャではFFmpegが既定です。保存先の既定値は `/var/lib/kreuzentv` です。CPUでエンコードする場合は `--encoder ffmpeg`、保存先を指定する場合は `--recording-dir /mnt/recordings` を使えます。既存の保存先を使う場合は、サービスユーザー `kreuzentv` に書き込み権限が必要です。
 
 PX-W3U4やDTV02A-4TS-Pを使用する場合は `--px4` でpx4_drvとファームウェアを導入します。PT3を検出した場合はLinux標準の `earth_pt3` をロードし、認識された地上波・衛星用DVBアダプターを `recdvb` とともにmirakcへ登録します。PT3を使う場合も地域のチャンネルはYAMLに記入してください。PT3には既定でLNB給電を指定しません。
 
@@ -75,7 +75,7 @@ RedirectMatch 308 ^/remotetv$ /remotetv/
 
 プロキシ経由で利用するときにKreuzenTVの待受ポートを変更した場合は、Apache側の転送先も変更してください。
 
-`config.json` にチューナー接続先と、`tools` 内のNVEncC・FFmpegの設定を入れてあります。変更はサーバーの再起動時に反映されます。
+`config.json` にチューナー接続先と、利用するエンコーダーの実行ファイルを設定します。変更はサーバーの再起動時に反映されます。
 
 ```powershell
 Set-Location F:\webapplications\EPGStation\tuner-dvr
@@ -90,7 +90,8 @@ node server.mjs
 | `port` | このPCで待ち受けるポート |
 | `dataDirectory` | 録画ファイルと予約・ルールの保存先。例は `"D:/Recordings"`。 `null` なら実機は `data/recordings`、デモは `data/demo` |
 | `ffmpeg` | FFmpegのパス。PATHに登録済みなら `"ffmpeg"` |
-| `nvencc` | NVEncCのパス。 `null` でライブ配信と録画のMP4変換にFFmpegを使用 |
+| `qsvenc` | QSVEncCの実行ファイルのパス |
+| `nvencc` | NVEncCを利用する場合の実行ファイルのパス |
 | `guideHiddenChannels` | 番組表、ライブ視聴、予約、自動予約から除外する放送局IDの配列。例は `[123456, 234567]` |
 
 非表示にした局はライブ視聴と新規予約の対象外になります。既存の予約と局指定ルールは保存され、非表示設定を解除すると再表示されます。非表示のまま放送が終了した予約は取消扱いになり、録画一覧に理由が表示されます。過去の録画は引き続き再生できます。
@@ -170,7 +171,7 @@ Linuxで `chapter_exe`、`logoframe`、`join_logo_scp` をサービスのPATHに
 放送局IDが `400151` の場合、ロゴを `400151.lgd` または `400151.lgd2` として配置します。録画の放送局IDから対応するロゴを選びます。ここで使うロゴは映像に重畳された透過ロゴの解析データです。番組表用のPNGとは形式と用途が異なります。局ロゴデータが未登録の局はComskipで検出します。[Linux版join_logo_scpの構成](https://github.com/tobitti0/JoinLogoScpTrialSetLinux)
 
 
-ライブ視聴画面はチューナーの局ロゴを優先します。取得できない局のPNGは、アプリの `logos` フォルダーに `ネットワークID-サービスID.png` という名前で置けます。例として、BS日テレは `logos/4-141.png` です。WSL版のフォルダーは `/home/trip/tuner-dvr/logos` です。[KonomiTVの局ロゴ](https://github.com/tsukumijima/KonomiTV#局ロゴ)
+ライブ視聴画面はチューナーの局ロゴを優先します。取得できない局のPNGは、アプリの `logos` フォルダーに `ネットワークID-サービスID.png` という名前で置けます。例として、BS日テレは `logos/4-141.png` です。WSLでアプリをホームディレクトリーの `tuner-dvr` に配置した場合、ロゴの保存先は `$HOME/tuner-dvr/logos` です。[KonomiTVの局ロゴ](https://github.com/tsukumijima/KonomiTV#局ロゴ)
 
 ## ライブ視聴と録画再生にNVEncCを使う
 
