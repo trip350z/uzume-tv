@@ -76,7 +76,7 @@ class KreuzenPvr : public CInstancePVRClient
 public:
   using CInstancePVRClient::CInstancePVRClient;
 
-  PVR_ERROR GetBackendName(std::string& name) override { name = "KreuzenTV"; return PVR_ERROR_NO_ERROR; }
+  PVR_ERROR GetBackendName(std::string& name) override { name = "uzume-tv"; return PVR_ERROR_NO_ERROR; }
   PVR_ERROR GetBackendVersion(std::string& version) override { version = "0.2.1"; return PVR_ERROR_NO_ERROR; }
   PVR_ERROR GetCapabilities(PVRCapabilities& caps) override
   {
@@ -258,7 +258,7 @@ public:
   {
     PVRTimerType type;
     type.SetId(1);
-    type.SetDescription("KreuzenTV: record programme");
+    type.SetDescription("uzume-tv: record programme");
     type.SetAttributes(PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE | PVR_TIMER_TYPE_SUPPORTS_CHANNELS |
                        PVR_TIMER_TYPE_SUPPORTS_START_TIME | PVR_TIMER_TYPE_SUPPORTS_END_TIME);
     types.push_back(type);
@@ -345,7 +345,7 @@ private:
     }
     catch (const std::exception& error)
     {
-      kodi::Log(ADDON_LOG_ERROR, "KreuzenTV: %s", error.what());
+      kodi::Log(ADDON_LOG_ERROR, "uzume-tv: %s", error.what());
       return PVR_ERROR_SERVER_ERROR;
     }
   }
@@ -357,7 +357,7 @@ private:
       base.pop_back();
     if (base.find('|') != std::string::npos ||
         (base.rfind("http://", 0) != 0 && base.rfind("https://", 0) != 0))
-      throw std::runtime_error("Set the KreuzenTV server URL");
+      throw std::runtime_error("Set the uzume-tv server URL");
     return base;
   }
 
@@ -368,19 +368,19 @@ private:
     if (!body.empty())
       url += "&customrequest=POST&Content-Type=application%2Fjson&postdata=" + Base64(body);
     if (!file.OpenFile(url, ADDON_READ_NO_CACHE))
-      throw std::runtime_error("KreuzenTV request failed: " + endpoint);
+      throw std::runtime_error("uzume-tv request failed: " + endpoint);
     std::string bytes;
     char buffer[8192];
     while (true)
     {
       const auto length = file.Read(buffer, sizeof(buffer));
       if (length < 0)
-        throw std::runtime_error("KreuzenTV response interrupted");
+        throw std::runtime_error("uzume-tv response interrupted");
       if (!length)
         break;
       bytes.append(buffer, length);
       if (bytes.size() > 32 * 1024 * 1024)
-        throw std::runtime_error("KreuzenTV response too large");
+        throw std::runtime_error("uzume-tv response too large");
     }
     auto result = Json::parse(bytes);
     if (result.contains("error"))

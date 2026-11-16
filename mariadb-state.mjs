@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 
 export function mariaDbStore(database) {
-    if (!/^[a-zA-Z0-9_]{1,64}$/.test(database)) throw new Error('MariaDBのデータベース名が不正です');
+    if (typeof database !== 'string' || !/^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,63}$/.test(database)) throw new Error('MariaDBのデータベース名が不正です');
     function query(sql) {
         return execFileSync('mariadb', ['--protocol=socket', '--batch', '--raw', '--skip-column-names', database], {
             input: sql, encoding: 'utf8', timeout: 10000, maxBuffer: 16 * 1024 * 1024

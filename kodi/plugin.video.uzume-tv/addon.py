@@ -108,7 +108,7 @@ def show_guide():
         station_id = int(PARAMS['station'])
         programs = by_station.get(station_id, [])
         if not programs:
-            DIALOG.notification('KreuzenTV', '表示できる番組がありません')
+            DIALOG.notification('uzume-tv', '表示できる番組がありません')
         program_entries(programs, stations, compact=True, now=now_ms)
         return
     selected_wave = PARAMS.get('wave')
@@ -158,8 +158,8 @@ def recording_options(state, existing=None):
     options['encodeProfile'] = profile_names[index]
     options['recordedFormat'] = DIALOG.input('ファイル名の書式（空欄は既定）', options.get('recordedFormat', ''))
     options['fileName'] = 'default'
-    options['autoEncode'] = DIALOG.yesno('KreuzenTV', '録画後にMP4へ自動変換しますか？')
-    options['deleteOriginal'] = options['autoEncode'] and DIALOG.yesno('KreuzenTV', '変換成功後に元のTSを削除しますか？')
+    options['autoEncode'] = DIALOG.yesno('uzume-tv', '録画後にMP4へ自動変換しますか？')
+    options['deleteOriginal'] = options['autoEncode'] and DIALOG.yesno('uzume-tv', '変換成功後に元のTSを削除しますか？')
     return options
 
 
@@ -198,7 +198,7 @@ def rule_editor(preset=None):
     rule.pop('enabled', None)
     if DIALOG.yesno('自動予約', 'このルールを保存しますか？'):
         api('rules/' + rule_id if rule_id else 'rules', 'PATCH' if rule_id else 'POST', rule)
-        DIALOG.notification('KreuzenTV', '自動予約ルールを保存しました')
+        DIALOG.notification('uzume-tv', '自動予約ルールを保存しました')
 
 
 def program_entries(programs, stations, *, compact=False, now=0):
@@ -267,7 +267,7 @@ def run(action):
             options = recording_options(api('state'))
             if options is not None and DIALOG.yesno('録画予約', p['title']):
                 api('reservations', 'POST', {'programId': p['id'], 'options': options})
-                DIALOG.notification('KreuzenTV', '録画予約を登録しました')
+                DIALOG.notification('uzume-tv', '録画予約を登録しました')
         elif choice == 2:
             rule_editor({'keyword': p['title'], 'keywordMatch': 'title', 'service': p['service']})
     elif action == 'recordings':
@@ -295,7 +295,7 @@ def run(action):
             options = recording_options(state, row.get('options'))
             if options is not None and DIALOG.yesno('予約の変更', row['title']):
                 api(path, 'PATCH', {'options': options})
-                DIALOG.notification('KreuzenTV', '予約を更新しました')
+                DIALOG.notification('uzume-tv', '予約を更新しました')
                 xbmc.executebuiltin('Container.Refresh')
         elif choice >= 0 and DIALOG.yesno(actions[choice], row['title']):
             api(path + '/cancel', 'POST')
@@ -328,7 +328,7 @@ try:
     if not action.startswith('play-'):
         xbmcplugin.endOfDirectory(HANDLE, succeeded=listing, cacheToDisc=False)
 except (OSError, RuntimeError, ValueError, KeyError) as error:
-    DIALOG.ok('KreuzenTV', str(error))
+    DIALOG.ok('uzume-tv', str(error))
     if action.startswith('play-'):
         xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem())
     else:

@@ -6,7 +6,7 @@ usage() {
 Usage: sudo bash install-linux.sh [--tuner-url URL] [--port PORT] [--node PATH]
                                  [--encoder ffmpeg|nvencc|qsvencc|vceencc]
                                  [--mirakc-config PATH] [--px4] [--arib-libs] [--recording-dir PATH]
-Installs KreuzenTV and its software dependencies on Debian or Ubuntu with systemd.
+Installs uzume-tv and its software dependencies on Debian or Ubuntu with systemd.
 Without --tuner-url, a new installation starts in demo mode.
 --port defaults to 8781. Tuner URL and port apply to the initial setup only.
 --node overrides automatic Node.js installation and must include npm.
@@ -59,7 +59,7 @@ if { $px4 || $arib_libs; } && [[ -z "$mirakc_config" ]]; then die '--px4 and --a
 arch=$(dpkg --print-architecture)
 default_encoder_choice=1
 if [[ "$arch" == amd64 ]]; then default_encoder_choice=3; fi
-if [[ -t 0 && ! -e /etc/kreuzentv/config.json ]]; then
+if [[ -t 0 && ! -e /etc/uzume-tv/config.json ]]; then
     if [[ -z "$encoder" ]]; then
         printf '%s\n' '1) FFmpeg (CPU)  2) NVEncC  3) QSVEncC  4) VCEEncC'
         while true; do
@@ -74,13 +74,13 @@ if [[ -t 0 && ! -e /etc/kreuzentv/config.json ]]; then
         done
     fi
     if [[ -z "$recording_dir" ]]; then
-        read -r -p '既定の録画保存先 [/var/lib/kreuzentv]: ' recording_dir
+        read -r -p '既定の録画保存先 [/var/lib/uzume-tv]: ' recording_dir
     fi
 fi
-if [[ -z "$encoder" && "$arch" == amd64 && ! -e /etc/kreuzentv/config.json ]]; then
+if [[ -z "$encoder" && "$arch" == amd64 && ! -e /etc/uzume-tv/config.json ]]; then
     encoder=qsvencc
 fi
-recording_dir=${recording_dir:-/var/lib/kreuzentv}
+recording_dir=${recording_dir:-/var/lib/uzume-tv}
 [[ "$recording_dir" == /* ]] || die 'Specify an absolute recording directory.'
 recording_dir=$(realpath -m -- "$recording_dir")
 [[ "$recording_dir" != / ]] || die 'Specify a recording directory other than /.'
@@ -97,18 +97,18 @@ source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 if [[ -n "$mirakc_config" ]]; then
     [[ -z "$tuner_url" ]] || die 'Specify either --mirakc-config or --tuner-url.'
     [[ -f "$mirakc_config" ]] || die 'Could not find the mirakc configuration.'
-    [[ ! -e /etc/kreuzentv/config.json ]] || die 'Use install-mirakc.sh and then change the tuner URL in the existing KreuzenTV settings.'
+    [[ ! -e /etc/uzume-tv/config.json ]] || die 'Use install-mirakc.sh and then change the tuner URL in the existing uzume-tv settings.'
     tuner_url=http://127.0.0.1:40772
 fi
-app_dir=/opt/kreuzentv
-config_dir=/etc/kreuzentv
-data_dir=/var/lib/kreuzentv
-account=kreuzentv
-unit=kreuzentv.service
+app_dir=/opt/uzume-tv
+config_dir=/etc/uzume-tv
+data_dir=/var/lib/uzume-tv
+account=uzume-tv
+unit=uzume-tv.service
 files=(app.js index.html style.css manifest.webmanifest sw.js icon-192.png icon-512.png server.mjs config.mjs scheduling.mjs
     mariadb-state.mjs live-captions.mjs commercials.mjs)
 for file in "${files[@]}" encode-profiles.json encode-profiles.hardware.example.json subtitle-tools/package.json subtitle-tools/package-lock.json; do
-    [[ -f "$source_dir/$file" ]] || die "Keep the installer alongside the KreuzenTV source files. Missing: $file"
+    [[ -f "$source_dir/$file" ]] || die "Keep the installer alongside the uzume-tv source files. Missing: $file"
 done
 
 apt-get update
@@ -159,7 +159,7 @@ if ! id "$account" >/dev/null 2>&1; then
 fi
 group=$(id -gn "$account")
 runuser -u "$account" -- "$node_path" --version >/dev/null ||
-    die 'Install Node.js in a location accessible to the kreuzentv service account.'
+    die 'Install Node.js in a location accessible to the uzume-tv service account.'
 
 install -d -m 0755 "$app_dir" "$app_dir/logos"
 install -d -o "$account" -g "$group" -m 0750 "$config_dir" "$data_dir"
@@ -180,7 +180,7 @@ if ! cmp -s "$source_dir/subtitle-tools/package-lock.json" "$subtitle_tools/pack
     install -m 0644 "$work/subtitle-tools/package-lock.json" "$subtitle_tools/"
 fi
 
-comskip_ini=/usr/local/share/kreuzentv/comskip.ini
+comskip_ini=/usr/local/share/uzume-tv/comskip.ini
 if ! command -v comskip >/dev/null; then
     comskip_source=https://codeload.github.com/erikkaashoek/Comskip/tar.gz/a140b6ac8bc8f596729e9052819affc779c3b377
     download "$comskip_source" "$work/comskip.tar.gz"
@@ -224,7 +224,7 @@ if [[ ! -e "$config_dir/config.json" ]]; then
     fi
     runuser -u "$account" -- test -w "$recording_dir" &&
         runuser -u "$account" -- test -x "$recording_dir" ||
-        die "Grant kreuzentv write and traversal access to $recording_dir."
+        die "Grant uzume-tv write and traversal access to $recording_dir."
     if [[ -n "$mirakc_config" ]]; then
         mirakc_args=("$mirakc_config")
         if $px4; then mirakc_args=(--px4 "${mirakc_args[@]}"); fi
@@ -262,11 +262,11 @@ fi
 
 systemctl enable --now mariadb.service
 mariadb --protocol=socket <<'SQL'
-CREATE DATABASE IF NOT EXISTS kreuzentv CHARACTER SET utf8mb4;
-CREATE USER IF NOT EXISTS 'kreuzentv'@'localhost' IDENTIFIED VIA unix_socket;
-GRANT CREATE, SELECT, INSERT, UPDATE ON kreuzentv.* TO 'kreuzentv'@'localhost';
+CREATE DATABASE IF NOT EXISTS `uzume-tv` CHARACTER SET utf8mb4;
+CREATE USER IF NOT EXISTS 'uzume-tv'@'localhost' IDENTIFIED VIA unix_socket;
+GRANT CREATE, SELECT, INSERT, UPDATE ON `uzume-tv`.* TO 'uzume-tv'@'localhost';
 SQL
-runuser -u "$account" -- mariadb --protocol=socket kreuzentv -e 'SELECT 1' >/dev/null
+runuser -u "$account" -- mariadb --protocol=socket uzume-tv -e 'SELECT 1' >/dev/null
 
 for file in "${files[@]}"; do
     install -m 0644 -- "$source_dir/$file" "$app_dir/$file.new"
@@ -274,7 +274,7 @@ for file in "${files[@]}"; do
 done
 cat > "/etc/systemd/system/$unit" <<EOF
 [Unit]
-Description=KreuzenTV recorder
+Description=uzume-tv recorder
 After=network-online.target mariadb.service
 Wants=network-online.target
 Requires=mariadb.service
@@ -285,7 +285,7 @@ Group=$group
 WorkingDirectory=$app_dir
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment=DVR_CONFIG=$config_dir/config.json
-Environment=DVR_MARIADB_DATABASE=kreuzentv
+Environment=DVR_MARIADB_DATABASE=uzume-tv
 Environment=DVR_RESTART_ON_APPLY=1
 ExecStart=$node_path $app_dir/server.mjs
 Restart=on-failure
@@ -305,10 +305,10 @@ else
     for ((attempt=0; attempt<45; attempt++)); do
         if systemctl is-active --quiet "$unit" &&
             curl -fsS --max-time 2 "http://127.0.0.1:$port/api/state" >/dev/null 2>&1; then
-            printf 'KreuzenTV: http://127.0.0.1:%s/\n' "$port"
+            printf 'uzume-tv: http://127.0.0.1:%s/\n' "$port"
             exit 0
         fi
         sleep 1
     done
-    die "KreuzenTV did not respond. Check: journalctl -u $unit -n 50"
+    die "uzume-tv did not respond. Check: journalctl -u $unit -n 50"
 fi

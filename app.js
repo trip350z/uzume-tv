@@ -909,7 +909,7 @@ function logoRegionFields(row, path, format, original = false) {
         input.addEventListener('input', draw);
     }
     function storageKey() {
-        return 'kreuzentv.logo.' + (row.importedVideo ? row.id : row.service) + '.' + format + '.' + image.naturalWidth + 'x' + image.naturalHeight;
+        return 'uzume-tv.logo.' + (row.importedVideo ? row.id : row.service) + '.' + format + '.' + image.naturalWidth + 'x' + image.naturalHeight;
     }
     function regionPath() {
         return path + '/logo-region?' + new URLSearchParams({ format, width: image.naturalWidth, height: image.naturalHeight });

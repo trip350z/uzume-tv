@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="plugin.video.kreuzentv" name="KreuzenTV" version="0.3.0" provider-name="KreuzenTV">
+<addon id="plugin.video.uzume-tv" name="uzume-tv" version="0.3.0" provider-name="uzume-tv">
     <requires><import addon="xbmc.python" version="3.0.0"/></requires>
     <extension point="xbmc.python.pluginsource" library="addon.py"><provides>video</provides></extension>
     <extension point="xbmc.addon.metadata">
-        <summary lang="ja_JP">KreuzenTVのライブ視聴と録画管理</summary>
+        <summary lang="ja_JP">uzume-tvのライブ視聴と録画管理</summary>
         <description lang="ja_JP">放送中と次の番組、放送波別の番組表、番組検索、録画視聴、予約、自動予約を操作します。</description>
         <platform>all</platform>
     </extension>

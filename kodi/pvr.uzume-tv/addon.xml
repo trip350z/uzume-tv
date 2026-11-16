@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<addon id="pvr.kreuzentv" name="KreuzenTV PVR" version="0.2.1" provider-name="KreuzenTV">
+<addon id="pvr.uzume-tv" name="uzume-tv PVR" version="0.2.1" provider-name="uzume-tv">
     <requires><import addon="kodi.binary.instance.pvr" version="8.3.0"/></requires>
-    <extension point="kodi.pvrclient" library_android="libpvr.kreuzentv.so"/>
+    <extension point="kodi.pvrclient" library_android="libpvr.uzume-tv.so"/>
     <extension point="xbmc.addon.metadata">
-        <summary lang="en_GB">KreuzenTV PVR client</summary>
-        <summary lang="ja_JP">KreuzenTV専用PVRクライアント</summary>
+        <summary lang="en_GB">uzume-tv PVR client</summary>
+        <summary lang="ja_JP">uzume-tv専用PVRクライアント</summary>
         <description lang="ja_JP">ライブ視聴、番組表、録画再生、番組表からの予約と取消。</description>
         <platform>android-armv7</platform>
     </extension>

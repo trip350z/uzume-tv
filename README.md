@@ -16,7 +16,7 @@ cp mirakc.config.example.yml mirakc.local.yml
 sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml
 ```
 
-対話端末での新規セットアップでは、FFmpeg・NVEncC・QSVEncC・VCEEncCの選択と、既定の録画保存先の入力が表示されます。amd64での既定の録画変換エンコーダーはQSVEncC（機器互換MP4・1080p30）で、対応するIntel GPUとドライバーが必要です。他のアーキテクチャではFFmpegが既定です。保存先の既定値は `/var/lib/kreuzentv` です。CPUでエンコードする場合は `--encoder ffmpeg`、保存先を指定する場合は `--recording-dir /mnt/recordings` を使えます。既存の保存先を使う場合は、サービスユーザー `kreuzentv` に書き込み権限が必要です。
+対話端末での新規セットアップでは、FFmpeg・NVEncC・QSVEncC・VCEEncCの選択と、既定の録画保存先の入力が表示されます。amd64での既定の録画変換エンコーダーはQSVEncC（機器互換MP4・1080p30）で、対応するIntel GPUとドライバーが必要です。他のアーキテクチャではFFmpegが既定です。保存先の既定値は `/var/lib/uzume-tv` です。CPUでエンコードする場合は `--encoder ffmpeg`、保存先を指定する場合は `--recording-dir /mnt/recordings` を使えます。既存の保存先を使う場合は、サービスユーザー `uzume-tv` に書き込み権限が必要です。
 
 PX-W3U4やDTV02A-4TS-Pを使用する場合は `--px4` でpx4_drvとファームウェアを導入します。PT3を検出した場合はLinux標準の `earth_pt3` をロードし、認識された地上波・衛星用DVBアダプターを `recdvb` とともにmirakcへ登録します。PT3を使う場合も地域のチャンネルはYAMLに記入してください。PT3には既定でLNB給電を指定しません。
 
@@ -26,7 +26,7 @@ PX-W3U4やDTV02A-4TS-Pを使用する場合は `--px4` でpx4_drvとファーム
 sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml --px4 --arib-libs
 ```
 
-公式イメージからmirakc 3.4.93と受信・解析ツールを取り出し、`mirakc.service` と `kreuzentv.service` を登録します。mirakcは `127.0.0.1:40772` で稼働し、初回はチャンネル走査と番組情報の収集に時間がかかります。mirakc単体を新規導入する場合は `sudo bash install-mirakc.sh ./mirakc.local.yml` を実行します。
+公式イメージからmirakc 3.4.93と受信・解析ツールを取り出し、`mirakc.service` と `uzume-tv.service` を登録します。mirakcは `127.0.0.1:40772` で稼働し、初回はチャンネル走査と番組情報の収集に時間がかかります。mirakc単体を新規導入する場合は `sudo bash install-mirakc.sh ./mirakc.local.yml` を実行します。
 
 ### 稼働済みのチューナーサーバーに接続
 
@@ -38,7 +38,7 @@ sudo bash install-linux.sh --tuner-url http://192.0.2.10:40772
 
 amd64・arm64ではNode.js 24とnpmを公式配布元から取得し、チェックサム確認後にアプリ専用の場所へ展開します。FFmpeg・FFprobe、MariaDB、字幕抽出用の `aribb24.js`、CM候補検出用のComskipも導入します。別のNode.jsを使う場合は、npm付きのNode.js 24以上を `--node /path/to/node` で指定できます。
 
-専用ユーザーで `kreuzentv.service` を起動します。予約・録画履歴・自動予約ルールはローカルのMariaDBに保存します。設定は `/etc/kreuzentv/config.json`、既定の録画先は `/var/lib/kreuzentv`、アプリは `/opt/kreuzentv` です。
+専用ユーザーで `uzume-tv.service` を起動します。予約・録画履歴・自動予約ルールはローカルのMariaDBに保存します。設定は `/etc/uzume-tv/config.json`、既定の録画先は `/var/lib/uzume-tv`、アプリは `/opt/uzume-tv` です。
 
 互換GPUとドライバーが利用できるamd64環境では、`--encoder nvencc`、`--encoder qsvencc`、`--encoder vceencc` のいずれかを指定すると、公式Linuxパッケージを取得して導入します。初回インストールでは、選択したエンコーダーのパスと録画用プロファイルも登録します。既存環境に後から追加した場合はWebの設定画面でパスとプロファイルを指定してください。GPUドライバーとGPU固有のランタイムは、機種やOSのバージョンに合わせて用意してください。
 
@@ -48,7 +48,13 @@ amd64・arm64ではNode.js 24とnpmを公式配布元から取得し、チェッ
 ssh -L 8781:127.0.0.1:8781 ユーザー名@Linuxマシン
 ```
 
-再実行するとアプリのファイルを更新し、既存設定と録画・予約データを保持します。サービス稼働中の更新は、録画・変換が終わってから `sudo systemctl restart kreuzentv` で反映します。起動ログは `sudo journalctl -u kreuzentv -n 50` で確認できます。従来のWSL版 `tuner-dvr.service` とは別のサービスです。同じマシンに新規導入する場合は空いているポートを指定してください。
+再実行するとアプリのファイルを更新し、既存設定と録画・予約データを保持します。サービス稼働中の更新は、録画・変換が終わってから `sudo systemctl restart uzume-tv` で反映します。起動ログは `sudo journalctl -u uzume-tv -n 50` で確認できます。従来のWSL版 `tuner-dvr.service` とは別のサービスです。同じマシンに新規導入する場合は空いているポートを指定してください。
+
+旧名称のLinuxインストールから移行する場合は、録画・変換が終わってから旧サービスを停止し、自動起動を無効にしてください。設定とMariaDBの状態をバックアップし、インストーラーを実行する前に以下を行います。
+
+1. サービスユーザーが未作成なら `sudo useradd --system --user-group --home-dir /var/lib/uzume-tv --shell /usr/sbin/nologin uzume-tv` で作成します。
+2. 設定を `/etc/uzume-tv/config.json` にコピーし、所有者を `uzume-tv`、権限を `0640` にします。設定内の録画先は既存ファイルを指すようにし、新しいサービスユーザーに録画先へのアクセスを許可します。
+3. MariaDBに `uzume-tv` データベースを作り、旧データベースの `dvr_state` テーブルを復元します。旧サービスで環境変数の上書きや局ロゴの追加をしていた場合は、それらも引き継ぎます。
 
 ## 設定と起動
 

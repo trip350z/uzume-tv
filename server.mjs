@@ -496,7 +496,7 @@ function startCommercialDetection(row) {
             if (job.detector === 'Comskip') {
                 job.phase = 'detecting';
                 removeFile(edl);
-                const detection = exec('comskip', ['--ini=/usr/local/share/kreuzentv/comskip.ini', '--output=' + folder, '--output-filename=' + id, input],
+                const detection = exec('comskip', ['--ini=/usr/local/share/uzume-tv/comskip.ini', '--output=' + folder, '--output-filename=' + id, input],
                     { timeout: 3600000, maxBuffer: 4194304, windowsHide: true });
                 let pending = '';
                 detection.child.stderr.on('data', chunk => {
@@ -564,7 +564,7 @@ function startLogoExtraction(row, input) {
     void (async () => {
         let work;
         try {
-            work = mkdtempSync(join(tmpdir(), 'kreuzentv-logo-'));
+            work = mkdtempSync(join(tmpdir(), 'uzume-tv-logo-'));
             const sample = join(work, 'sample.ts');
             const output = join(work, 'station.lgd');
             await exec(ffmpeg, ['-nostdin', '-v', 'error', '-ss', String(start), '-i', source, '-map', '0:v:0',
@@ -1297,7 +1297,7 @@ async function serveHls(req, res, id, asset, params) {
         const name = recording ? '' : params.get('profile') ?? defaultLiveProfile;
         if (name && !liveProfiles.has(name)) fail(400, 'ライブ用プロファイルを選択してください');
         if (hlsSessions.size >= liveLimit * 2 || liveSessions.size >= liveLimit) fail(503, '同時視聴の上限に達しました');
-        session = { folder: mkdtempSync(join(tmpdir(), 'kreuzentv-hls-')), format, lastRequest: Date.now() };
+        session = { folder: mkdtempSync(join(tmpdir(), 'uzume-tv-hls-')), format, lastRequest: Date.now() };
         hlsSessions.set(id, session);
         session.job = browserLive(null, recording ? null : service, recording, offset, recording ? null : id,
             liveProfiles.get(name), session).catch(error => { session.error = error; }).finally(() => { session.finished = true; });

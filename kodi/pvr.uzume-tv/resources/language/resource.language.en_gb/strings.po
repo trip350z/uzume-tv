@@ -8,5 +8,5 @@ msgid "Connection"
 msgstr ""
 
 msgctxt "#30001"
-msgid "KreuzenTV server URL"
+msgid "uzume-tv server URL"
 msgstr ""
