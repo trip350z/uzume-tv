@@ -181,6 +181,8 @@ Linuxで `chapter_exe`、`logoframe`、`join_logo_scp` をサービスのPATHに
 
 ライブ視聴画面はチューナーの局ロゴを優先します。取得できない局のPNGは、アプリの `logos` フォルダーに `ネットワークID-サービスID.png` という名前で置けます。例として、BS日テレは `logos/4-141.png` です。WSLでアプリをホームディレクトリーの `tuner-dvr` に配置した場合、ロゴの保存先は `$HOME/tuner-dvr/logos` です。[KonomiTVの局ロゴ](https://github.com/tsukumijima/KonomiTV#局ロゴ)
 
-## ライブ視聴と録画再生にNVEncCを使う
+## QSVEncCでライブ視聴と録画のMP4変換
 
-`nvencc` に指定したNVEncCでライブ映像と録画ファイルをH.264にエンコードします。エンコードにはNVIDIAドライバー、ブラウザーでの再生にはH.264・AAC対応が必要です。[NVEncCの公式配布物](https://github.com/rigaya/NVEnc/releases)
+`config.json` の `qsvenc` にQSVEncCの実行ファイルのパスを指定します。「設定」の「ライブ用エンコードプロファイル」でQSVEncCを選んだプロファイルを作り、「ライブ視聴の既定プロファイル」に設定します。エンコードにはIntel Quick Sync Video対応のGPUとドライバー、ブラウザーでの再生にはH.264・AAC対応が必要です。[QSVEncCの公式配布物](https://github.com/rigaya/QSVEnc/releases)
+
+録画をQSVEncCでエンコードする場合は、「録画変換の既定プロファイル」でQSVEncCのプロファイルを選び、録画一覧の「MP4に変換」を使います。変換済みのMP4はブラウザーで直接再生できます。
