@@ -1,36 +1,49 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -eq 1 && $1 == --help ]]; then
-    echo 'Usage: sudo bash install-mirakc.sh [--px4] [--arib-libs] /path/to/mirakc/config.yml'
-    exit 0
-fi
-px4=false
-arib_libs=false
-while [[ ${1:-} == --px4 || ${1:-} == --arib-libs ]]; do
-    case "$1" in
-        --px4) px4=true ;;
-        --arib-libs) arib_libs=true ;;
-    esac
-    shift
-done
-[[ $# -eq 1 && -f $1 && $EUID -eq 0 ]] || {
-    echo 'Specify a mirakc YAML configuration and run with sudo.' >&2
-    exit 1
+usage() {
+    cat <<'EOF'
+Usage: sudo bash install-mirakc.sh /path/to/mirakc/config.yml
+       sudo bash install-mirakc.sh --tools-only
+
+Installs mirakc, recisdb, ISDBScanner, libyakisoba, libsobacas and libaribb25.
+--tools-only installs recisdb and ISDBScanner so you can generate a configuration first.
+Prepare the tuner drivers and firmware for your hardware before scanning.
+EOF
 }
-[[ -d /run/systemd/system && $(dpkg --print-architecture) == amd64 ]]
-if [[ -e /etc/mirakc/config.yml || -e /etc/systemd/system/mirakc.service ]]; then
-    echo 'mirakc is already configured. Use --tuner-url with install-linux.sh to connect to it.' >&2
-    exit 1
+
+die() { printf '%s\n' "$*" >&2; exit 1; }
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+esac
+[[ $# -eq 1 ]] || { usage >&2; exit 1; }
+tools_only=false
+if [[ $1 == --tools-only ]]; then
+    tools_only=true
+else
+    [[ -f $1 ]] || die 'Specify an existing mirakc YAML configuration.'
 fi
-if ss -H -ltn 'sport = :40772' | grep -q .; then
-    echo 'Port 40772 is in use. Stop the previous tuner server before migrating.' >&2
-    exit 1
+[[ $EUID -eq 0 ]] || die 'Run this installer with sudo.'
+source /etc/os-release
+[[ "${ID:-}" == debian || "${ID:-}" == ubuntu ]] || die 'This installer requires Debian or Ubuntu.'
+arch=$(dpkg --print-architecture)
+case "$arch" in
+    amd64) scanner_asset=isdb-scanner; scanner_sha=ef524db8b0e421017b59a3a6c7babf73a0fb904b51f2a1517c43b3321b2a7d06 ;;
+    arm64) scanner_asset=isdb-scanner-arm; scanner_sha=111ee47eaa3328f468351714df79fb9146fe2ac474e8e75c54273e42395a17b7 ;;
+    *) die 'recisdb and ISDBScanner packages require amd64 or arm64.' ;;
+esac
+if ! $tools_only; then
+    [[ -d /run/systemd/system && $arch == amd64 ]] || die 'Full mirakc installation requires amd64 and systemd.'
+    if [[ -e /etc/mirakc/config.yml || -e /etc/systemd/system/mirakc.service ]]; then
+        die 'mirakc is already configured. Use --tools-only to install scanning tools or connect with install-linux.sh --tuner-url.'
+    fi
+    if [[ -n $(ss -H -ltn 'sport = :40772') ]]; then
+        die 'Port 40772 is in use. Stop the previous tuner server before migrating.'
+    fi
 fi
 
 apt-get update
-apt-get install -y ca-certificates curl docker.io python3-yaml kmod
-systemctl start docker.service
+apt-get install -y ca-certificates curl
 # Use the same image as the Ubuntu deployment. Docker is used to extract the binaries.
 image=docker.io/mirakc/mirakc@sha256:bcbf20b211e9a33666797f0a5f3af7b14d9a47ccefd4182f242b0a05a5c0ed82
 work=$(mktemp -d)
@@ -40,8 +53,39 @@ cleanup() {
     rm -rf -- "$work"
 }
 trap cleanup EXIT
-if $arib_libs; then
-    apt-get install -y build-essential autoconf automake libtool cmake pkg-config libpcsclite-dev pcscd
+
+recisdb_version=1.2.3
+if command -v recisdb >/dev/null; then
+    installed_version=$(recisdb --version)
+else
+    installed_version=
+fi
+if [[ $installed_version != 'recisdb '* ]] ||
+    ! dpkg --compare-versions "${installed_version#recisdb }" ge "$recisdb_version"; then
+    package="recisdb_${recisdb_version}-1_${arch}.deb"
+    curl -fsSL --retry 3 "https://github.com/kazuki0824/recisdb-rs/releases/download/$recisdb_version/$package" -o "$work/$package"
+    chmod 0755 "$work"
+    apt-get install -y "$work/$package"
+fi
+recisdb --version
+
+scanner_version=1.3.3
+if [[ -x /usr/local/bin/isdb-scanner ]] &&
+    scanner_installed=$(/usr/local/bin/isdb-scanner --version 2>/dev/null) &&
+    [[ $scanner_installed == 'ISDBScanner version '* ]] &&
+    dpkg --compare-versions "${scanner_installed#ISDBScanner version }" ge "$scanner_version"; then
+    printf '%s\n' "$scanner_installed"
+else
+    curl -fsSL --retry 3 "https://github.com/tsukumijima/ISDBScanner/releases/download/v$scanner_version/$scanner_asset" -o "$work/isdb-scanner"
+    printf '%s  %s\n' "$scanner_sha" "$work/isdb-scanner" | sha256sum -c -
+    install -m 0755 "$work/isdb-scanner" /usr/local/bin/isdb-scanner
+    /usr/local/bin/isdb-scanner --version
+fi
+if $tools_only; then exit 0; fi
+
+apt-get install -y docker.io python3-yaml kmod build-essential autoconf automake libtool cmake pkg-config libpcsclite-dev pcscd
+systemctl start docker.service
+install_arib_libraries() {
     for spec in \
         tsunoda14/libyakisoba/03849e66ecb8e89fcdd0862eebcf43255d63794a \
         tsunoda14/libsobacas/77dbb010226d4959f81fc605b588836581dce038 \
@@ -65,10 +109,11 @@ if $arib_libs; then
                 make install
             fi
         )
-        ldconfig
     done
+    ldconfig
     systemctl start pcscd.socket
-fi
+}
+install_arib_libraries
 docker pull "$image"
 container=$(docker create "$image")
 for name in mirakc mirakc-arib recpt1 recdvb; do
@@ -83,17 +128,6 @@ for name in recpt1 recdvb; do
         exit 1
     fi
 done
-if $px4; then
-    if ! modinfo px4_drv >/dev/null 2>&1; then
-        apt-get install -y "linux-headers-$(uname -r)" dkms
-        package=px4-drv-dkms_0.7.1_all.deb
-        curl -fsSL --retry 3 "https://github.com/tsukumijima/px4_drv/releases/download/v0.7.1/$package" -o "$work/$package"
-        apt-get install -y "$work/$package"
-    fi
-    modprobe px4_drv
-    udevadm settle
-fi
-
 pt3=false
 for device in /sys/bus/pci/devices/*; do
     [[ $(cat "$device/vendor") == 0x1172 && $(cat "$device/device") == 0x4c15 &&
@@ -110,7 +144,7 @@ if $pt3; then
     apt-get install -y dvb-tools
 fi
 
-python3 - "$1" "$work/config.yml" "$pt3" "$arib_libs" <<'PY'
+python3 - "$1" "$work/config.yml" "$pt3" <<'PY'
 from pathlib import Path
 import os
 import re
@@ -140,16 +174,22 @@ if sys.argv[3] == "true":
         if terrestrial == satellite:
             raise SystemExit(f"Could not determine the PT3 delivery system for adapter {adapter}.")
         detected.append(adapter)
-        if any(re.search(rf"(?:--dev(?:\s+|=)){adapter}(?=\s|$)", tuner.get("command", "")) for tuner in tuners):
+        frontend_path = f"/dev/dvb/adapter{adapter}/frontend{index}"
+        if any(frontend_path in tuner.get("command", "").split() or
+               re.search(rf"(?:--dev(?:\s+|=)){adapter}(?=\s|$)", tuner.get("command", "")) for tuner in tuners):
             continue
-        tuners.append({"name": f"PT3 adapter{adapter}", "types": ["GR"] if terrestrial else ["BS", "CS"],
-                       "command": f"/opt/mirakc/bin/recdvb --dev {adapter} " + "{{{channel}}} - -"})
+        configured_gr = [str(c["channel"]) for c in config["channels"] if c.get("type") == "GR"]
+        if any(channel.isdecimal() for channel in configured_gr):
+            command = f"/opt/mirakc/bin/recdvb --dev {adapter} " + "{{{channel}}} - -"
+        else:
+            command = f"recisdb tune --device {frontend_path} --channel " + "{{{channel}}} {{{extra_args}}} -"
+        tuners.append({"name": f"PT3 adapter{adapter}", "types": ["GR"] if terrestrial else ["BS", "CS"], "command": command})
     if not detected:
         raise SystemExit("PT3 was detected but earth_pt3 did not expose any DVB frontends.")
     print("PT3 DVB adapters: " + ", ".join(detected))
 if not tuners:
     raise SystemExit("Configure tuner commands in the mirakc YAML first.")
-if sys.argv[4] == "true":
+if any(re.search(r"(?:^|/)(?:recpt1|recdvb)\s|(?:^|\s)--no-decode(?:\s|$)", tuner.get("command", "")) for tuner in tuners):
     decoder = config.setdefault("filters", {}).setdefault("decode-filter", {})
     decoder.setdefault("command", "/usr/local/bin/arib-b25-stream-test")
 config.setdefault("server", {})["addrs"] = [{"http": "127.0.0.1:40772"}]

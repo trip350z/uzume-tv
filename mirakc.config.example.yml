@@ -2,14 +2,14 @@
 channels:
   - name: 地上波
     type: GR
-    channel: '23'
+    channel: T23
 
 tuners:
   - name: 地上波チューナー
     types: [GR]
-    command: recpt1 --device /dev/px4video2 {{{channel}}} - -
+    command: recisdb tune --device /dev/px4video2 --channel {{{channel}}} -
 
-# Use the decoder already configured for the site's card reader.
+# For an external decoder, add --no-decode to the tuner command.
 # filters:
 #   decode-filter:
-#     command: /usr/bin/arib-b25-stream-test
+#     command: /usr/local/bin/arib-b25-stream-test

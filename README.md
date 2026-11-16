@@ -6,35 +6,27 @@ Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画�
 
 systemdが動作するDebian・Ubuntu向けです。Linuxへ `tuner-dvr` フォルダーをコピーし、その中で実行します。
 
-### uzume-tvとmirakcを同じマシンに新規インストール
+### 受信環境を新規インストール
 
-amd64環境では、`mirakc.config.example.yml` をコピーし、利用地域の物理チャンネル、チューナーのデバイスパス、必要に応じて復号コマンドを記入してから実行します。チューナードライバー、ファームウェア、カードリーダーと復号環境は機器に合わせて準備してください。
+受信環境には `install-mirakc.sh` を使います。チューナードライバー（PX4_DRVなど）、ファームウェア、カードリーダーは機器に合わせてあらかじめ準備してください。設定ファイルを作るには、先に受信ツールだけを導入してISDBScannerを実行します。スキャン中は既存のチューナーサービスを停止し、その前に録画・視聴が終わっていることを確認してください。[ISDBScannerの使い方](https://github.com/tsukumijima/ISDBScanner#isdbscanner)
 
 ```bash
-cp mirakc.config.example.yml mirakc.local.yml
-# mirakc.local.yml を実機に合わせて編集
-sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml
+sudo bash install-mirakc.sh --tools-only
+sudo isdb-scanner ./scanned
+sudo bash install-mirakc.sh ./scanned/mirakc/config.yml
 ```
+
+YAMLを手動で用意する場合は `mirakc.config.example.yml` を参考にしてください。受信環境のインストーラーは、公式イメージからmirakcを導入し、`recisdb`、ISDBScanner、`libyakisoba`、`libsobacas`、`libaribb25` もセットアップします。mirakc一式の導入にはamd64とsystemdが必要です。`--tools-only` はamd64とarm64に対応します。mirakcは `127.0.0.1:40772` で稼働します。
+
+### 宇受売 TV本体をインストール
+
+```bash
+sudo bash install-linux.sh --tuner-url http://127.0.0.1:40772
+```
+
+別のマシンのMirakurun / mirakcに接続する場合は、URLを実際の接続先に置き換えてください。`--tuner-url` を省くと初回はデモモードで起動します。既定のポートは8781で、初回に `--port 8782` のように指定できます。
 
 対話端末での新規セットアップでは、FFmpeg・NVEncC・QSVEncC・VCEEncCの選択と、既定の録画保存先の入力が表示されます。amd64での既定の録画変換エンコーダーはQSVEncC（機器互換MP4・1080p30）で、対応するIntel GPUとドライバーが必要です。他のアーキテクチャではFFmpegが既定です。保存先の既定値は `/var/lib/uzume-tv` です。CPUでエンコードする場合は `--encoder ffmpeg`、保存先を指定する場合は `--recording-dir /mnt/recordings` を使えます。既存の保存先を使う場合は、サービスユーザー `uzume-tv` に書き込み権限が必要です。
-
-PX-W3U4やDTV02A-4TS-Pを使用する場合は `--px4` でpx4_drvとファームウェアを導入します。PT3を検出した場合はLinux標準の `earth_pt3` をロードし、認識された地上波・衛星用DVBアダプターを `recdvb` とともにmirakcへ登録します。PT3を使う場合も地域のチャンネルはYAMLに記入してください。PT3には既定でLNB給電を指定しません。
-
-`--arib-libs` は `libyakisoba`、`libsobacas`、`libaribb25` を導入します。復号コマンドが空欄なら、物理カードリーダー用のPC/SCでビルドした `arib-b25-stream-test` を設定します。既存の復号コマンドは優先されます。
-
-```bash
-sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml --px4 --arib-libs
-```
-
-公式イメージからmirakc 3.4.93と受信・解析ツールを取り出し、`mirakc.service` と `uzume-tv.service` を登録します。mirakcは `127.0.0.1:40772` で稼働し、初回はチャンネル走査と番組情報の収集に時間がかかります。mirakc単体を新規導入する場合は `sudo bash install-mirakc.sh ./mirakc.local.yml` を実行します。
-
-### 稼働済みのチューナーサーバーに接続
-
-```bash
-sudo bash install-linux.sh --tuner-url http://192.0.2.10:40772
-```
-
-接続先のURLは使用するMirakurun / mirakcに合わせてください。`--tuner-url` を省くと初回はデモモードで起動します。既定のポートは8781で、初回に `--port 8782` のように指定できます。チューナーサービスは接続先で稼働している必要があります。
 
 amd64・arm64ではNode.js 24とnpmを公式配布元から取得し、チェックサム確認後にアプリ専用の場所へ展開します。FFmpeg・FFprobe、MariaDB、字幕抽出用の `aribb24.js`、CM候補検出用のComskipも導入します。別のNode.jsを使う場合は、npm付きのNode.js 24以上を `--node /path/to/node` で指定できます。
 
