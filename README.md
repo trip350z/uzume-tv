@@ -77,8 +77,10 @@ RedirectMatch 308 ^/remotetv$ /remotetv/
 
 `config.json` にチューナー接続先と、利用するエンコーダーの実行ファイルを設定します。変更はサーバーの再起動時に反映されます。
 
+`Set-Location` には、`server.mjs` があるフォルダーのパスを指定してください。
+
 ```powershell
-Set-Location F:\webapplications\EPGStation\tuner-dvr
+Set-Location "C:\path\to\uzume-tv"
 node server.mjs
 ```
 
