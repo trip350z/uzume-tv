@@ -1,4 +1,4 @@
-# UZUME TV（宇受売TV）
+# uzume-tv（宇受売 TV）
 
 Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画管理アプリです。Node.js 24で動作します。パッケージのインストールは不要です。
 
@@ -6,7 +6,7 @@ Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画�
 
 systemdが動作するDebian・Ubuntu向けです。Linuxへ `tuner-dvr` フォルダーをコピーし、その中で実行します。
 
-### KreuzenTVとmirakcを同じマシンに新規インストール
+### uzume-tvとmirakcを同じマシンに新規インストール
 
 amd64環境では、`mirakc.config.example.yml` をコピーし、利用地域の物理チャンネル、チューナーのデバイスパス、必要に応じて復号コマンドを記入してから実行します。チューナードライバー、ファームウェア、カードリーダーと復号環境は機器に合わせて準備してください。
 
@@ -54,17 +54,17 @@ ssh -L 8781:127.0.0.1:8781 ユーザー名@Linuxマシン
 
 ### ホーム画面に追加する
 
-HTTPSの公開URLからKreuzenTVを開き、AndroidのChromeではメニューから「ホーム画面に追加」または「アプリをインストール」、iPhoneのSafariでは共有メニューから「ホーム画面に追加」を選びます。番組表・録画・ライブ視聴にはサーバーとの接続が必要です。
+HTTPSの公開URLからuzume-tvを開き、AndroidのChromeではメニューから「ホーム画面に追加」または「アプリをインストール」、iPhoneのSafariでは共有メニューから「ホーム画面に追加」を選びます。番組表・録画・ライブ視聴にはサーバーとの接続が必要です。
 
 ### Apacheのサブパスで公開する
 
-サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://example.com/remotetv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてKreuzenTVに転送します。以下はHTTPSのVirtualHost内の抜粋です。例のドメインとIPアドレスは、実際の公開ドメインと接続先のIPアドレスに置き換えてください。
+サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://example.com/remotetv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてuzume-tvに転送します。以下はHTTPSのVirtualHost内の抜粋です。例のドメインとIPアドレスは、実際の公開ドメインと接続先のIPアドレスに置き換えてください。
 
 ```apache
 RedirectMatch 308 ^/remotetv$ /remotetv/
 <Location /remotetv/>
     AuthType Basic
-    AuthName "Authentication for KreuzenTV"
+    AuthName "Authentication for uzume-tv"
     AuthUserFile /etc/apache2/.htpasswd
     Require valid-user
     ProxyPreserveHost On
@@ -73,7 +73,7 @@ RedirectMatch 308 ^/remotetv$ /remotetv/
 </Location>
 ```
 
-プロキシ経由で利用するときにKreuzenTVの待受ポートを変更した場合は、Apache側の転送先も変更してください。
+プロキシ経由で利用するときにuzume-tvの待受ポートを変更した場合は、Apache側の転送先も変更してください。
 
 `config.json` にチューナー接続先と、利用するエンコーダーの実行ファイルを設定します。変更はサーバーの再起動時に反映されます。
 
