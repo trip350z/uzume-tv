@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "aribb24.js": "2.0.31"
+  }
+}

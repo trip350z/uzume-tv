@@ -1,0 +1,15 @@
+# Set the physical channel and device path for the installation site.
+channels:
+  - name: 地上波
+    type: GR
+    channel: '23'
+
+tuners:
+  - name: 地上波チューナー
+    types: [GR]
+    command: recpt1 --device /dev/px4video2 {{{channel}}} - -
+
+# Use the decoder already configured for the site's card reader.
+# filters:
+#   decode-filter:
+#     command: /usr/bin/arib-b25-stream-test

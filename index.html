@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>宇受売 TV</title>
+    <meta name="theme-color" content="#142522">
+    <link rel="manifest" href="./manifest.webmanifest" crossorigin="use-credentials">
+    <link rel="icon" type="image/png" href="./icon-192.png?v=uzume">
+    <link rel="apple-touch-icon" href="./icon-192.png?v=uzume">
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./app.js"></script>
+</head>
+<body>
+    <header class="top">
+        <a class="brand" href="#tv">
+            <img class="brand-icon" src="./icon-192.png?v=uzume" width="34" height="34" alt="">
+            <span class="brand-title">
+                <strong>宇受売 TV</strong>
+                <small lang="en">UZUME TV</small>
+            </span>
+        </a>
+        <div id="connection" class="connection" role="status"></div>
+        <div class="activity" role="status" aria-label="録画・エンコードの状態">
+            <span id="recording-activity">録画 <b>–</b></span>
+            <span id="encoding-activity"><span class="encoding-label">エンコード</span><span class="encoding-short">変換</span> <b>–</b></span>
+        </div>
+    </header>
+    <nav class="navigation" aria-label="画面切替">
+        <a href="#tv" title="テレビを見る"><span class="nav-icon icon-tv" aria-hidden="true"></span><span>テレビを見る</span></a>
+        <a href="#recordings" title="録画一覧"><span class="nav-icon icon-recordings" aria-hidden="true"></span><span>録画一覧</span></a>
+        <a href="#guide" title="番組表"><span class="nav-icon icon-guide" aria-hidden="true"></span><span>番組表</span></a>
+        <a href="#reservations" title="予約"><span class="nav-icon icon-reservations" aria-hidden="true"></span><span>予約</span></a>
+        <a href="#search" title="検索"><span class="nav-icon icon-search" aria-hidden="true"></span><span>検索</span></a>
+        <a href="#rules" title="自動予約"><span class="nav-icon icon-rules" aria-hidden="true"></span><span>自動予約</span></a>
+        <a href="#storage" title="ストレージ"><span class="nav-icon icon-storage" aria-hidden="true"></span><span>ストレージ</span></a>
+        <div class="navigation-footer">
+            <a href="#settings" title="設定"><span class="nav-icon icon-settings" aria-hidden="true"></span><span>設定</span></a>
+            <div class="navigation-version" title="バージョン 0.1.0"><span class="nav-icon icon-version" aria-hidden="true">i</span><small>v0.1.0</small></div>
+        </div>
+    </nav>
+    <main>
+        <header class="heading"><h1 id="heading">テレビをみる</h1><button id="sync">番組データ更新</button></header>
+        <p id="notice" role="status" hidden></p>
+        <section id="content" aria-labelledby="heading"></section>
+    </main>
+    <dialog id="detail"><div id="details"></div><form method="dialog"><button>閉じる</button></form></dialog>
+</body>
+</html>

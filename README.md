@@ -1,0 +1,177 @@
+# UZUME TV（宇受売TV）
+
+Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画管理アプリです。Node.js 24で動作します。パッケージのインストールは不要です。
+
+## Linuxへのインストール
+
+systemdが動作するDebian・Ubuntu向けです。Linuxへ `tuner-dvr` フォルダーをコピーし、その中で実行します。
+
+### KreuzenTVとmirakcを同じマシンに新規インストール
+
+amd64環境では、`mirakc.config.example.yml` をコピーし、利用地域の物理チャンネル、チューナーのデバイスパス、必要に応じて復号コマンドを記入してから実行します。チューナードライバー、ファームウェア、カードリーダーと復号環境は機器に合わせて準備してください。
+
+```bash
+cp mirakc.config.example.yml mirakc.local.yml
+# mirakc.local.yml を実機に合わせて編集
+sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml
+```
+
+対話端末での新規セットアップでは、FFmpeg・NVEncC・QSVEncC・VCEEncCの選択と、既定の録画保存先の入力が表示されます。未入力時はFFmpegと `/var/lib/kreuzentv` です。無人実行では `--encoder ffmpeg` や `--recording-dir /mnt/Disk02/TV_REC` で指定できます。既存の保存先を使う場合は、サービスユーザー `kreuzentv` に書き込み権限が必要です。
+
+PX-W3U4やDTV02A-4TS-Pを使用する場合は `--px4` でpx4_drvとファームウェアを導入します。PT3を検出した場合はLinux標準の `earth_pt3` をロードし、認識された地上波・衛星用DVBアダプターを `recdvb` とともにmirakcへ登録します。PT3を使う場合も地域のチャンネルはYAMLに記入してください。PT3には既定でLNB給電を指定しません。
+
+`--arib-libs` は `libyakisoba`、`libsobacas`、`libaribb25` を導入します。復号コマンドが空欄なら、物理カードリーダー用のPC/SCでビルドした `arib-b25-stream-test` を設定します。既存の復号コマンドは優先されます。
+
+```bash
+sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml --px4 --arib-libs
+```
+
+公式イメージからmirakc 3.4.93と受信・解析ツールを取り出し、`mirakc.service` と `kreuzentv.service` を登録します。mirakcは `127.0.0.1:40772` で稼働し、初回はチャンネル走査と番組情報の収集に時間がかかります。mirakc単体を新規導入する場合は `sudo bash install-mirakc.sh ./mirakc.local.yml` を実行します。
+
+### 稼働済みのチューナーサーバーに接続
+
+```bash
+sudo bash install-linux.sh --tuner-url http://192.168.100.205:40772
+```
+
+接続先のURLは使用するMirakurun / mirakcに合わせてください。`--tuner-url` を省くと初回はデモモードで起動します。既定のポートは8781で、初回に `--port 8782` のように指定できます。チューナーサービスは接続先で稼働している必要があります。
+
+amd64・arm64ではNode.js 24とnpmを公式配布元から取得し、チェックサム確認後にアプリ専用の場所へ展開します。FFmpeg・FFprobe、MariaDB、字幕抽出用の `aribb24.js`、CM候補検出用のComskipも導入します。別のNode.jsを使う場合は、npm付きのNode.js 24以上を `--node /path/to/node` で指定できます。
+
+専用ユーザーで `kreuzentv.service` を起動します。予約・録画履歴・自動予約ルールはローカルのMariaDBに保存します。設定は `/etc/kreuzentv/config.json`、既定の録画先は `/var/lib/kreuzentv`、アプリは `/opt/kreuzentv` です。
+
+互換GPUとドライバーが利用できるamd64環境では、`--encoder nvencc`、`--encoder qsvencc`、`--encoder vceencc` のいずれかを指定すると、公式Linuxパッケージを取得して導入します。初回インストールでは、選択したエンコーダーのパスと録画用プロファイルも登録します。既存環境に後から追加した場合はWebの設定画面でパスとプロファイルを指定してください。GPUドライバーとGPU固有のランタイムは、機種やOSのバージョンに合わせて用意してください。
+
+待ち受けはLinuxマシンの `127.0.0.1` です。別のPCから利用する場合は、たとえば手元のPCでSSHトンネルを開き、ブラウザーで `http://127.0.0.1:8781/` に接続します。
+
+```bash
+ssh -L 8781:127.0.0.1:8781 ユーザー名@Linuxマシン
+```
+
+再実行するとアプリのファイルを更新し、既存設定と録画・予約データを保持します。サービス稼働中の更新は、録画・変換が終わってから `sudo systemctl restart kreuzentv` で反映します。起動ログは `sudo journalctl -u kreuzentv -n 50` で確認できます。従来のWSL版 `tuner-dvr.service` とは別のサービスです。同じマシンに新規導入する場合は空いているポートを指定してください。
+
+## 設定と起動
+
+### ホーム画面に追加する
+
+HTTPSの公開URLからKreuzenTVを開き、AndroidのChromeではメニューから「ホーム画面に追加」または「アプリをインストール」、iPhoneのSafariでは共有メニューから「ホーム画面に追加」を選びます。番組表・録画・ライブ視聴にはサーバーとの接続が必要です。
+
+### Apacheのサブパスで公開する
+
+サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://kreuzen.org/remotetv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてKreuzenTVに転送します。以下はHTTPSのVirtualHost内の抜粋です。
+
+```apache
+RedirectMatch 308 ^/remotetv$ /remotetv/
+<Location /remotetv/>
+    AuthType Basic
+    AuthName "Authentication for KreuzenTV"
+    AuthUserFile /etc/apache2/.htpasswd
+    Require valid-user
+    ProxyPreserveHost On
+    ProxyPass http://192.168.100.205:8781/
+    ProxyPassReverse http://192.168.100.205:8781/
+</Location>
+```
+
+プロキシ経由で利用するときにKreuzenTVの待受ポートを変更した場合は、Apache側の転送先も変更してください。
+
+`config.json` にチューナー接続先と、`tools` 内のNVEncC・FFmpegの設定を入れてあります。変更はサーバーの再起動時に反映されます。
+
+```powershell
+Set-Location F:\webapplications\EPGStation\tuner-dvr
+node server.mjs
+```
+
+ブラウザーで http://127.0.0.1:8780/ を開きます。
+
+| 項目 | 設定値 |
+| --- | --- |
+| `tunerUrl` | Mirakurun / mirakc のベースURL。 `null` でデモ |
+| `port` | このPCで待ち受けるポート |
+| `dataDirectory` | 録画ファイルと予約・ルールの保存先。例は `"D:/Recordings"`。 `null` なら実機は `data/recordings`、デモは `data/demo` |
+| `ffmpeg` | FFmpegのパス。PATHに登録済みなら `"ffmpeg"` |
+| `nvencc` | NVEncCのパス。 `null` でライブ配信と録画のMP4変換にFFmpegを使用 |
+| `guideHiddenChannels` | 番組表、ライブ視聴、予約、自動予約から除外する放送局IDの配列。例は `[123456, 234567]` |
+
+非表示にした局はライブ視聴と新規予約の対象外になります。既存の予約と局指定ルールは保存され、非表示設定を解除すると再表示されます。非表示のまま放送が終了した予約は取消扱いになり、録画一覧に理由が表示されます。過去の録画は引き続き再生できます。
+
+相対パスは設定ファイルのあるフォルダーが基準です。Windowsの絶対パスは `D:/Recordings` のようにスラッシュで書けます。保存先を変更するときは、引き継ぐ録画と `dvr.json` をサーバー停止中に新しい保存先へコピーしてください。
+
+放送局IDは、起動後にPowerShellで次のコマンドを実行すると確認できます。
+
+```powershell
+(Invoke-RestMethod 'http://127.0.0.1:8780/api/guide').services | Select-Object id, name
+```
+
+別の設定ファイルを使う場合は環境変数 `DVR_CONFIG` にそのパスを指定します。従来の `TUNER_URL`、`PORT`、`DVR_DATA`、`FFMPEG`、`NVENCC` が設定されている場合は、対応するJSONの値より優先します。
+
+サーバーは起動時と約15秒ごとに番組表を更新し、予約時刻になるとTSファイルへ録画します。録画にはNode.jsのプロセスを起動したままにする必要があります。
+
+- 番組表で日付と放送波を切り替え、番組名・説明を検索できます。
+- 自動予約では、含む・除外キーワード、放送波、放送局、ジャンル、曜日、開始時刻の範囲を組み合わせられます。入力した条件はすべて適用されます。日付をまたぐ時間帯では、曜日は実際の番組開始日（日本時間）で判定します。既存ルールの編集・無効化・削除後は、作成済みの予約を予約画面から管理します。
+- 予約画面と番組表にはチューナー競合の見込みを表示します。放送波ごとの対応機器を割り当て、同じ物理チャンネルの配信は共有できる前提で判定します。録画中の番組を優先し、同時に開始できない予約は手動予約を先に扱います。空き待ちの間に番組が終了すると録画失敗になります。外部アプリのチューナー使用状況によって実際の結果は変わります。
+- EPGに放送時刻の変更が反映されると、予約および録画中の終了時刻を更新します。終了直前にもEPGを確認します。EPGでリレー先を特定できた場合は別のTSファイルとして自動予約し、「リレー」と表示します。
+- 「テレビをみる」では放送波を切り替え、各局の放送中・次の番組を確認できます。局を選ぶと同じ画面でライブ再生します。番組表の「ライブ視聴」からも再生できます。既定の配信はVP8・Opus対応のFFmpegでWebMに変換します。録画にチューナーが必要になると、競合するブラウザー視聴を終了します。外部プレーヤー用のURLは番組表の視聴画面から取得できます。
+- 録画一覧の「再生」で、TSはNVEncCまたはFFmpegで変換しながら配信し、MP4ファイルは保存しません。保存済みのMP4は直接再生します。「MP4に変換」はファイルを保存したい場合に使います。
+
+既存のEPGStationからの録画・ルールの移行や、LAN利用時の認証には未対応です。
+
+## 予約ごとの保存先とエンコード
+
+左メニューの「設定」で、チューナー、待受ポート、保存先、エンコーダー、EPG更新間隔、同時ライブ視聴数、非表示局を変更できます。保存後にサーバーを再起動してください。既定の保存先を変更する場合は、停止中に既存の `dvr.json` と録画を移してください。
+
+既定のファイル名は `recordedFormat` で設定し、番組予約や自動予約ごとに上書きできます。たとえば `%YEAR%-%MONTH%-%DAY%_%HOUR%%MIN%_%TITLE% [%CHNAME%]` を指定できます。日時は日本時間です。ファイル拡張子は自動で付き、同名の場合は録画IDが追加されます。書式は新規予約の作成時に適用されます。
+
+`config.json` に保存先を名前とパスの組で追加すると、番組詳細と自動予約ルールでTS・MP4の保存先を選べます。
+
+```json
+"recordingDirectories": {
+  "ドラマ": "./data/drama",
+  "MP4保管": "./data/mp4"
+}
+```
+
+この例は既存のJSONオブジェクトの中に追加します。相対パスは設定ファイルの場所が基準です。予約時の保存先を予約データに記録します。ルールの保存設定を変更すると、以後作成される予約に反映されます。録画後の自動変換を有効にすると、録画完了後にMP4を作成します。元TSの削除は明示的に選択した場合に限り、MP4保存後に実行します。
+
+## 録画用エンコードプロファイル
+
+「設定」の「録画変換の既定プロファイル」で、個別のプロファイルを指定していない録画のMP4変換に使うプロファイルを選べます。設定ファイルでは `defaultEncodeProfile` に登録済みのエンコードプロファイル名を指定します。CMカットとロゴ消しはFFmpegで前処理し、映像の圧縮には選択されたプロファイルを使います。
+
+`config.json` の `encodeProfiles` に、名前・エンコーダー・引数の配列を登録します。「設定」画面でも編集でき、再起動後に番組予約・自動予約で選択できます。録画後の自動変換と録画一覧からの変換に適用されます。
+
+```json
+{
+  "qsvenc": "/usr/bin/qsvencc",
+  "vceenc": "/usr/bin/vceencc",
+  "encodeProfiles": [
+    {"name": "FFmpeg 省容量", "encoder": "ffmpeg", "args": ["-vf", "yadif", "-c:v", "libx264", "-crf", "26", "-c:a", "aac"]},
+    {"name": "Intel H.264", "encoder": "qsvenc", "args": ["--avsw", "--codec", "h264", "--vbr", "4500", "--audio-codec", "aac"]},
+    {"name": "AMD H.264", "encoder": "vceenc", "args": ["--avsw", "--codec", "h264", "--vbr", "4500", "--audio-codec", "aac"]}
+  ]
+}
+```
+
+上記の項目を既存の設定に追加し、実行ファイルのパスと引数は利用環境に合わせます。`encoder` は `ffmpeg`、`nvencc`、`qsvenc`、`vceenc` のいずれかです。入力・出力パスとMP4形式はアプリが指定するため、`args` には画質や音声などのオプションだけを書きます。既存の予約はプロファイルを名前で参照します。引数を変えると未変換の録画にも適用されます。
+
+## MariaDBに予約を保存する
+
+WSL版はサービス環境の `DVR_MARIADB_DATABASE=tuner_dvr` で、予約、録画履歴、自動予約ルールを MariaDB の `dvr_state` に保存します。接続にはローカルの Unix ソケットを使用します。最初の起動時に既存の `dvr.json` を取り込み、以降は MariaDB を読み書きします。録画ファイルは設定したフォルダーに保存されます。
+
+## 局ロゴを補う
+
+### CM検出用の局ロゴ
+
+公式Amatsukaze Linux版を使う場合、`DVR_JLS_AMATSUKAZE` に `AmatsukazeCLI` の絶対パスを設定できます。この構成では、同梱の `chapter_exe`、`join_logo_scp`、`tsreadex` を使用し、透過ロゴの照合はAmatsukazeが行います。配布物の `exe_files`、`JL`、`avs` の相対配置を維持してください。
+
+`DVR_JLS_LOGO_GENERATOR` にLinux版 `AmatsukazeGenLogo` の実行ファイルの絶対パスを追加すると、CM検出時に局のロゴが未登録なら、元の録画TSから自動生成します。実行ファイルに対応する `libAmatsukaze.so` も利用可能にしてください。生成時にはサービスユーザーが `DVR_JLS_LOGOS` に書き込める必要があります。成功時は局IDで保存して次回も使用し、生成に失敗した場合はComskipに切り替えます。[AmatsukazeGenLogoの仕様](https://github.com/rigaya/Amatsukaze/blob/master/doc/AmatsukazeGenLogo.md)
+
+Linuxで `chapter_exe`、`logoframe`、`join_logo_scp` をサービスのPATHに置き、AviSynth+とL-SMASH Worksを利用できるようにします。systemdのサービス環境で `DVR_JLS_SCRIPT` にJLスクリプトの絶対パス、`DVR_JLS_LOGOS` にCM検出用ロゴのディレクトリの絶対パスを設定します。JLスクリプトとそれが参照する関連ファイルは同じ配布セットから配置してください。
+
+放送局IDが `400151` の場合、ロゴを `400151.lgd` または `400151.lgd2` として配置します。録画の放送局IDから対応するロゴを選びます。ここで使うロゴは映像に重畳された透過ロゴの解析データです。番組表用のPNGとは形式と用途が異なります。局ロゴデータが未登録の局はComskipで検出します。[Linux版join_logo_scpの構成](https://github.com/tobitti0/JoinLogoScpTrialSetLinux)
+
+
+ライブ視聴画面はチューナーの局ロゴを優先します。取得できない局のPNGは、アプリの `logos` フォルダーに `ネットワークID-サービスID.png` という名前で置けます。例として、BS日テレは `logos/4-141.png` です。WSL版のフォルダーは `/home/trip/tuner-dvr/logos` です。[KonomiTVの局ロゴ](https://github.com/tsukumijima/KonomiTV#局ロゴ)
+
+## ライブ視聴と録画再生にNVEncCを使う
+
+`nvencc` に指定したNVEncCでライブ映像と録画ファイルをH.264にエンコードします。エンコードにはNVIDIAドライバー、ブラウザーでの再生にはH.264・AAC対応が必要です。[NVEncCの公式配布物](https://github.com/rigaya/NVEnc/releases)

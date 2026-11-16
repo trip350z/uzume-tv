@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+    <category label="KreuzenTV">
+        <setting id="server" type="text" label="サーバーURL" default="http://192.168.100.205:8781"/>
+    </category>
+</settings>

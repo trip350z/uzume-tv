@@ -1,0 +1,7 @@
+/data/
+/tools/
+/subtitle-tools/node_modules/
+/config.json
+/kodi/*.zip
+/kodi/**/*.so
+**/__pycache__/

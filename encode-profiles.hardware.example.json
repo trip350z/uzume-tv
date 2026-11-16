@@ -1,0 +1,86 @@
+[
+  {
+    "name": "QSVEncC H.264 標準",
+    "encoder": "qsvenc",
+    "args": [
+      "--avsw",
+      "--vpp-deinterlace",
+      "normal",
+      "--codec",
+      "h264",
+      "--vbr",
+      "4500",
+      "--audio-codec",
+      "aac",
+      "--audio-bitrate",
+      "160"
+    ]
+  },
+  {
+    "name": "VCEEncC H.264 標準",
+    "encoder": "vceenc",
+    "args": [
+      "--avsw",
+      "--codec",
+      "h264",
+      "--vbr",
+      "4500",
+      "--audio-codec",
+      "aac",
+      "--audio-bitrate",
+      "160"
+    ]
+  },
+  {
+    "name": "機器互換 MP4 H.264 High 4.2（1080p30）",
+    "encoder": "qsvenc",
+    "prepare1080p30": "1920:1080",
+    "args": [
+      "--backend",
+      "vaapi",
+      "--avsw",
+      "--codec",
+      "h264",
+      "--profile",
+      "high",
+      "--level",
+      "4.2",
+      "--vbr",
+      "8000",
+      "--max-bitrate",
+      "36000",
+      "--audio-codec",
+      "aac",
+      "--audio-bitrate",
+      "192",
+      "--audio-samplerate",
+      "48000"
+    ]
+  },
+  {
+    "name": "機器互換 MP4 H.264 High 4.2（720p30）",
+    "encoder": "qsvenc",
+    "prepare1080p30": "1280:720",
+    "args": [
+      "--backend",
+      "vaapi",
+      "--avsw",
+      "--codec",
+      "h264",
+      "--profile",
+      "high",
+      "--level",
+      "4.2",
+      "--vbr",
+      "4500",
+      "--max-bitrate",
+      "36000",
+      "--audio-codec",
+      "aac",
+      "--audio-bitrate",
+      "192",
+      "--audio-samplerate",
+      "48000"
+    ]
+  }
+]
