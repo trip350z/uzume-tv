@@ -1,5 +1,41 @@
 [
   {
+    "name": "NVEncC H.264 高画質",
+    "encoder": "nvencc",
+    "args": [
+      "--avsw",
+      "--vpp-yadif",
+      "mode=auto",
+      "--codec",
+      "h264",
+      "--vbr",
+      "6500",
+      "--audio-codec",
+      "aac",
+      "--audio-bitrate",
+      "160"
+    ]
+  },
+  {
+    "name": "NVEncC H.264 省容量",
+    "encoder": "nvencc",
+    "args": [
+      "--avsw",
+      "--vpp-yadif",
+      "mode=auto",
+      "--output-res",
+      "1280x720",
+      "--codec",
+      "h264",
+      "--vbr",
+      "3000",
+      "--audio-codec",
+      "aac",
+      "--audio-bitrate",
+      "160"
+    ]
+  },
+  {
     "name": "QSVEncC H.264 標準",
     "encoder": "qsvenc",
     "args": [
