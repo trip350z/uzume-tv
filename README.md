@@ -31,7 +31,7 @@ sudo bash install-linux.sh --mirakc-config ./mirakc.local.yml --px4 --arib-libs
 ### 稼働済みのチューナーサーバーに接続
 
 ```bash
-sudo bash install-linux.sh --tuner-url http://192.168.100.205:40772
+sudo bash install-linux.sh --tuner-url http://192.0.2.10:40772
 ```
 
 接続先のURLは使用するMirakurun / mirakcに合わせてください。`--tuner-url` を省くと初回はデモモードで起動します。既定のポートは8781で、初回に `--port 8782` のように指定できます。チューナーサービスは接続先で稼働している必要があります。
@@ -58,7 +58,7 @@ HTTPSの公開URLからKreuzenTVを開き、AndroidのChromeではメニュー�
 
 ### Apacheのサブパスで公開する
 
-サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://kreuzen.org/remotetv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてKreuzenTVに転送します。以下はHTTPSのVirtualHost内の抜粋です。
+サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://example.com/remotetv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてKreuzenTVに転送します。以下はHTTPSのVirtualHost内の抜粋です。例のドメインとIPアドレスは、実際の公開ドメインと接続先のIPアドレスに置き換えてください。
 
 ```apache
 RedirectMatch 308 ^/remotetv$ /remotetv/
@@ -68,8 +68,8 @@ RedirectMatch 308 ^/remotetv$ /remotetv/
     AuthUserFile /etc/apache2/.htpasswd
     Require valid-user
     ProxyPreserveHost On
-    ProxyPass http://192.168.100.205:8781/
-    ProxyPassReverse http://192.168.100.205:8781/
+    ProxyPass http://192.0.2.10:8781/
+    ProxyPassReverse http://192.0.2.10:8781/
 </Location>
 ```
 
