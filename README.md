@@ -56,11 +56,11 @@ HTTPSの公開URLからuzume-tvを開き、AndroidのChromeではメニューか
 
 ### Apacheのサブパスで公開する
 
-サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://example.com/remotetv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてuzume-tvに転送します。以下はHTTPSのVirtualHost内の抜粋です。例のドメインとIPアドレスは、実際の公開ドメインと接続先のIPアドレスに置き換えてください。
+サービス環境変数 `DVR_PROXY_URL` に末尾が `/` の公開URL（例 `https://example.com/uzume-tv/`）を指定します。Apache側で元のHostを渡し、公開パスを取り除いてuzume-tvに転送します。以下はHTTPSのVirtualHost内の抜粋です。例のドメインとIPアドレスは、実際の公開ドメインと接続先のIPアドレスに置き換えてください。
 
 ```apache
-RedirectMatch 308 ^/remotetv$ /remotetv/
-<Location /remotetv/>
+RedirectMatch 308 ^/uzume-tv$ /uzume-tv/
+<Location /uzume-tv/>
     AuthType Basic
     AuthName "Authentication for uzume-tv"
     AuthUserFile /etc/apache2/.htpasswd
