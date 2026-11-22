@@ -1,4 +1,4 @@
-# UZUME TV
+# UZUME TV 1.0.0
 
 Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画管理アプリです。Node.js 24で動作します。パッケージのインストールは不要です。
 
@@ -34,7 +34,7 @@ git clone https://github.com/trip350z/uzume-tv.git
 cd uzume-tv
 ```
 
-このリポジトリは非公開のため、アクセス権のあるGitHubアカウントで認証してください。HTTPSの認証でパスワードの入力を求められた場合は、リポジトリの読み取り権限を持つPersonal Access Tokenを入力します。トークンはクローンURLに含めず、認証の入力欄に入力してください。
+公開リポジトリのため、クローン時にGitHubへのログインは不要です。
 
 以降のインストーラーは、この `uzume-tv` フォルダー内で実行します。すでにMirakurun / mirakcが稼働している場合は「UZUME TV本体をインストール」へ進み、接続先のURLを指定してください。
 
