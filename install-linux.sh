@@ -5,7 +5,7 @@ usage() {
     cat <<'EOF'
 Usage: sudo bash install-linux.sh [--tuner-url URL] [--port PORT] [--node PATH]
                                  [--encoder ffmpeg|nvencc|qsvencc|vceencc]
-                                 [--recording-dir PATH]
+                                 [--recording-dir PATH] [--no-amatsukaze]
 Installs uzume-tv and its software dependencies on Debian or Ubuntu with systemd.
 Without --tuner-url, a new installation starts in demo mode.
 --port defaults to 8781. Tuner URL and port apply to the initial setup only.
@@ -13,6 +13,7 @@ Without --tuner-url, a new installation starts in demo mode.
 --encoder selects the encoder. New amd64 installs default to QSVEncC (compatible Intel GPU and driver required).
 Use --encoder ffmpeg for CPU encoding. Other architectures default to FFmpeg.
 --recording-dir sets the initial recording directory.
+Amatsukaze is installed automatically on amd64. --no-amatsukaze skips this step.
 Interactive installs prompt for the encoder and recording directory if omitted.
 EOF
 }
@@ -23,9 +24,11 @@ port=8781
 node_path=
 encoder=
 recording_dir=
+amatsukaze=true
 while (($#)); do
     case "$1" in
         -h|--help) usage; exit 0 ;;
+        --no-amatsukaze) amatsukaze=false; shift ;;
         --tuner-url|--port|--node|--encoder|--recording-dir)
             (($# >= 2)) && [[ -n "$2" && "$2" != --* ]] || die "Missing value for $1"
             case "$1" in
@@ -273,6 +276,54 @@ NoNewPrivileges=true
 [Install]
 WantedBy=multi-user.target
 EOF
+
+if $amatsukaze && [[ "$arch" == amd64 ]]; then
+    amatsukaze_version=1.1.1.7
+    amatsukaze_dir="$app_dir/runtime/amatsukaze-$amatsukaze_version"
+    amatsukaze_bin="$amatsukaze_dir/exe_files"
+    if [[ ! -f "$amatsukaze_dir/.installed" ]]; then
+        archive="Amatsukaze_linux_${amatsukaze_version}_x64.tar.xz"
+        download "https://github.com/rigaya/Amatsukaze/releases/download/$amatsukaze_version/$archive" "$work/$archive"
+        printf '%s  %s\n' 2e01b8dc4404b1730710c70eeeb97c99f473aa8d49fa958951fbcbe4f1988427 "$work/$archive" | sha256sum --check
+        install -d -m 0755 "$work/amatsukaze"
+        tar --extract --xz --no-same-owner --directory="$work/amatsukaze" --file="$work/$archive"
+        for executable in AmatsukazeCLI AmatsukazeGenLogo chapter_exe join_logo_scp tsreadex MP4Box muxer timelineeditor; do
+            [[ -x "$work/amatsukaze/exe_files/$executable" ]] || die "Amatsukaze is missing $executable."
+            if ! dependencies=$(LC_ALL=C ldd "$work/amatsukaze/exe_files/$executable" 2>&1); then
+                [[ "$dependencies" == *'not a dynamic executable'* || "$dependencies" == *'statically linked'* ]] ||
+                    die "Cannot inspect Amatsukaze dependencies for $executable: $dependencies"
+            fi
+            [[ "$dependencies" != *'not found'* ]] || die "Missing Amatsukaze libraries for $executable: $dependencies"
+        done
+        [[ -s "$work/amatsukaze/JL/JL_標準.txt" && -s "$work/amatsukaze/exe_files/libAmatsukaze.so" ]] ||
+            die 'Amatsukaze scripts or logo library are missing.'
+        touch "$work/amatsukaze/.installed"
+        # Versioned directories keep running jobs on their original binaries during updates.
+        [[ ! -e "$amatsukaze_dir" ]] || die "Incomplete Amatsukaze installation at $amatsukaze_dir."
+        mv -- "$work/amatsukaze" "$amatsukaze_dir"
+    fi
+    install -d -o "$account" -g "$group" -m 0750 "$data_dir/jls-logos"
+    install -d -m 0755 "/etc/systemd/system/$unit.d"
+    cat > "$work/amatsukaze.conf" <<EOF
+[Service]
+Environment=DVR_JLS_AMATSUKAZE=$amatsukaze_bin/AmatsukazeCLI
+Environment=DVR_JLS_LOGO_GENERATOR=$amatsukaze_bin/AmatsukazeGenLogo
+Environment="DVR_JLS_SCRIPT=$amatsukaze_dir/JL/JL_標準.txt"
+Environment=DVR_JLS_LOGOS=$data_dir/jls-logos
+EOF
+    # Existing administrator drop-ins and environment files take precedence.
+    if ! grep -q 'DVR_JLS_' "/etc/systemd/system/$unit" &&
+        ! grep -RqE 'DVR_JLS_|^[[:space:]]*EnvironmentFile=' "/etc/systemd/system/$unit.d"; then
+        install -m 0644 "$work/amatsukaze.conf" "/etc/systemd/system/$unit.d/10-amatsukaze.conf"
+    elif [[ -f "/etc/systemd/system/$unit.d/10-amatsukaze.conf" ]] &&
+        ! find "/etc/systemd/system/$unit.d" -name '*.conf' ! -name '10-amatsukaze.conf' -exec grep -lE 'DVR_JLS_|^[[:space:]]*EnvironmentFile=' {} + | grep -q .; then
+        install -m 0644 "$work/amatsukaze.conf" "/etc/systemd/system/$unit.d/10-amatsukaze.conf"
+    else
+        printf '%s\n' 'Amatsukaze installed. Existing DVR_JLS settings are preserved.'
+    fi
+elif $amatsukaze; then
+    printf '%s\n' 'Automatic Amatsukaze installation is available on amd64.'
+fi
 
 systemctl daemon-reload
 systemctl enable "$unit"

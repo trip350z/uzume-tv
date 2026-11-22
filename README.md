@@ -178,3 +178,33 @@ Linuxで `chapter_exe`、`logoframe`、`join_logo_scp` をサービスのPATHに
 `config.json` の `qsvenc` にQSVEncCの実行ファイルのパスを指定します。「設定」の「ライブ用エンコードプロファイル」でQSVEncCを選んだプロファイルを作り、「ライブ視聴の既定プロファイル」に設定します。エンコードにはIntel Quick Sync Video対応のGPUとドライバー、ブラウザーでの再生にはH.264・AAC対応が必要です。[QSVEncCの公式配布物](https://github.com/rigaya/QSVEnc/releases)
 
 録画をQSVEncCでエンコードする場合は、「録画変換の既定プロファイル」でQSVEncCのプロファイルを選び、録画一覧の「MP4に変換」を使います。変換済みのMP4はブラウザーで直接再生できます。
+
+## Amatsukazeの自動セットアップ
+
+amd64環境では、本体の `install-linux.sh` が公式Linux版Amatsukaze 1.1.1.7を取得し、SHA-256確認後に `/opt/uzume-tv/runtime/amatsukaze-1.1.1.7` へ展開します。CM解析・ロゴ生成・映像編集のツールと同梱ライブラリーを配置し、systemdの `10-amatsukaze.conf` に `DVR_JLS_AMATSUKAZE`、`DVR_JLS_LOGO_GENERATOR`、`DVR_JLS_SCRIPT`、`DVR_JLS_LOGOS` を設定します。ロゴ解析データの保存先は `/var/lib/uzume-tv/jls-logos` です。
+
+既存の個別の `DVR_JLS_*` 設定や環境ファイルがある場合は、その設定を優先します。自動導入を省く場合は `--no-amatsukaze` を指定します。arm64ではAmatsukazeの自動導入を省きます。ロゴ消しを利用する際は、QSVEncCの録画変換プロファイルを選び、局ごとのロゴデータを登録するか「ロゴを抽出」で生成してください。[公式Linux配布物](https://github.com/rigaya/Amatsukaze/releases/tag/1.1.1.7)
+
+## インストール済み環境のアップデート
+
+録画・変換・CM解析・ライブ視聴が終わった時間に更新します。作業フォルダーで変更したファイルがある場合は、先に保存・コミットしてから最新版を取得してください。
+
+```bash
+cd /path/to/uzume-tv
+git pull --ff-only
+backup="/var/backups/uzume-tv-$(date +%Y%m%d-%H%M%S)"
+sudo mkdir -m 700 "$backup"
+sudo cp -a /etc/uzume-tv /opt/uzume-tv /etc/systemd/system/uzume-tv.service "$backup/"
+if [ -d /etc/systemd/system/uzume-tv.service.d ]; then
+    sudo cp -a /etc/systemd/system/uzume-tv.service.d "$backup/"
+fi
+sudo systemctl stop uzume-tv
+sudo mariadb-dump --single-transaction uzume-tv | sudo tee "$backup/database.sql" > /dev/null
+# 保存先やエンコーダーなど、既存の設定を読み込んで更新
+sudo bash install-linux.sh
+sudo systemctl restart uzume-tv
+sudo systemctl status uzume-tv --no-pager
+sudo journalctl -u uzume-tv -n 50 --no-pager
+```
+
+インストーラーは既存の設定ファイルと録画・予約を引き継ぎます。Amatsukazeを新しいバージョンへ更新する場合はバージョン別のディレクトリーに展開します。独自のAmatsukaze設定がある場合は、更新後にその設定先も確認してください。起動後はWeb画面で予約・録画一覧と、CM解析・ロゴ消しの動作を確認します。
