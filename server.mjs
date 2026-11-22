@@ -14,12 +14,13 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { fitsTuners, matchesRule, predictConflicts, reservationOrder, ruleServices } from './scheduling.mjs';
 import { loadConfig, validRecordedFormat } from './config.mjs';
+import { reclaimRecordingSpace } from './storage-cleanup.mjs';
 import { mariaDbStore } from './mariadb-state.mjs';
 import { readLiveCaptions } from './live-captions.mjs';
 import { parseCommercials, commercialFilters, cutCaptions, hasAmatsukazeLogoData, joinLogoCuts, logoPreview } from './commercials.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-const { file: configFile, port, source, directory, ffmpeg, nvencc, destinations, profiles, defaultEncodeProfile, liveProfiles, defaultLiveProfile, epgInterval, liveLimit, recordedFormat, guideHiddenChannels } = loadConfig(root);
+const { file: configFile, port, source, directory, ffmpeg, nvencc, destinations, profiles, defaultEncodeProfile, liveProfiles, defaultLiveProfile, epgInterval, liveLimit, recordingMinFreeGB, recordedFormat, guideHiddenChannels } = loadConfig(root);
 const encoderNames = { ffmpeg: 'FFmpeg', nvencc: 'NVEncC', qsvenc: 'QSVEncC', vceenc: 'VCEEncC' };
 const liveProfileOptions = [...liveProfiles].map(([name, profile]) => ({ name, encoder: encoderNames[profile.encoder] }));
 const isHidden = service => guideHiddenChannels.has(service);
@@ -276,6 +277,31 @@ function reconcile() {
     if (changed) save();
 }
 
+let spaceCleanup = null;
+async function ensureRecordingSpace(location) {
+    if (!recordingMinFreeGB) return;
+    while (spaceCleanup) await spaceCleanup;
+    spaceCleanup = (async () => {
+        const candidates = state.reservations
+            .filter(row => row.status === 'completed' && !row.importedVideo)
+            .map(row => ({ id: row.id, start: row.start, ts: recordingPath(row), mp4: recordingPath(row, 'mp4') }));
+        const busy = id => !state.reservations.some(row => row.id === id && row.status === 'completed') ||
+            active.has(id) || encoding.has(id) || automaticEdits.has(id) || thumbnails.has(id) ||
+            captionJobs.has(id) || logoExtractions.get(id)?.status === 'running' ||
+            commercialJobs.get(id)?.status === 'running' ||
+            [...liveSessions.values()].some(session => session.recordingId === id);
+        await reclaimRecordingSpace(location, BigInt(Math.ceil(recordingMinFreeGB * 1e9)), candidates,
+            async file => {
+                const { stdout } = await exec('ffprobe', ['-v', 'error', '-show_entries',
+                    'format=duration:stream=codec_type', '-of', 'json', file], { timeout: 15000 });
+                const info = JSON.parse(stdout);
+                return Number(info.format?.duration) > 0 && info.streams?.some(stream => stream.codec_type === 'video');
+            }, busy);
+    })().catch(error => console.warn('録画先の空き容量を確認できませんでした', location, error.message));
+    try { await spaceCleanup; }
+    finally { spaceCleanup = null; }
+}
+
 async function record(row) {
     const controller = new AbortController();
     let created = false;
@@ -288,6 +314,7 @@ async function record(row) {
         row.status = 'recording';
         save();
         mkdirSync(row.tsDirectory || directory, { recursive: true });
+        await ensureRecordingSpace(row.tsDirectory || directory);
         let response;
         for (let attempt = 1; attempt <= 3; attempt++) {
             const connection = new AbortController();
@@ -1522,7 +1549,7 @@ async function handleRequest(req, res) {
         if (applyingSettings) fail(503, '設定を反映しています');
         if (path === '/api/settings' && ['GET', 'PUT'].includes(method)) {
             const current = loadConfig(root);
-            const keys = ['port', 'tunerUrl', 'dataDirectory', 'ffmpeg', 'nvencc', 'qsvenc', 'vceenc', 'encodeProfiles', 'defaultEncodeProfile', 'liveProfiles', 'defaultLiveProfile', 'recordingDirectories', 'guideHiddenChannels', 'epgInterval', 'liveLimit', 'recordedFormat'];
+            const keys = ['port', 'tunerUrl', 'dataDirectory', 'ffmpeg', 'nvencc', 'qsvenc', 'vceenc', 'encodeProfiles', 'defaultEncodeProfile', 'liveProfiles', 'defaultLiveProfile', 'recordingDirectories', 'guideHiddenChannels', 'epgInterval', 'liveLimit', 'recordingMinFreeGB', 'recordedFormat'];
             if (method === 'PUT') {
                 const input = await readBody(req);
                 const next = { ...current.config };
@@ -1972,6 +1999,16 @@ for (const address of lanAddress ? ['127.0.0.1', lanAddress] : ['127.0.0.1']) {
 }
 setInterval(() => void refresh(), epgInterval * 1000);
 setInterval(tick, 1_000);
+let checkingRecordingSpace = false;
+setInterval(async () => {
+    if (checkingRecordingSpace || !recordingMinFreeGB || applyingSettings) return;
+    checkingRecordingSpace = true;
+    try {
+        const locations = new Set(state.reservations.filter(row => active.has(row.id))
+            .map(row => row.tsDirectory || directory));
+        for (const location of locations) await ensureRecordingSpace(location);
+    } finally { checkingRecordingSpace = false; }
+}, 30_000);
 setInterval(async () => {
     if (applyingSettings || encoding.size || automaticEdits.size || extractingLogo() ||
         [...commercialJobs.values()].some(job => job.status === 'running')) return;

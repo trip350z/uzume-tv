@@ -2123,6 +2123,7 @@ function renderSettings({ config, stations, canApplySettings }) {
         ['dataDirectory', '既定の保存先', ''], ['ffmpeg', 'FFmpeg実行ファイル', 'ffmpeg'], ['nvencc', 'NVEncC実行ファイル', ''],
         ['qsvenc', 'QSVEncC実行ファイル', ''], ['vceenc', 'VCEEncC実行ファイル', ''],
         ['epgInterval', 'EPG更新間隔（秒）', 15], ['liveLimit', '同時ライブ視聴数', 4],
+        ['recordingMinFreeGB', '変換済みTSの自動削除・空き容量（GB、0で無効）', 10],
         ['recordedFormat', '既定のファイル名書式', '']]) {
         const wrapper = node('label', label);
         const input = node('input');
@@ -2306,7 +2307,7 @@ function renderSettings({ config, stations, canApplySettings }) {
                 .filter(pair => pair.some(Boolean));
             if (new Set(pairs.map(([name]) => name)).size !== pairs.length) throw new Error('保存先の名前が重複しています。');
             const next = Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value.trim() || null]));
-            for (const key of ['port', 'epgInterval', 'liveLimit']) next[key] = Number(next[key]);
+            for (const key of ['port', 'epgInterval', 'liveLimit', 'recordingMinFreeGB']) next[key] = Number(next[key]);
             next.recordingDirectories = Object.fromEntries(pairs);
             next.encodeProfiles = JSON.parse(profileInput.value || '[]');
             next.defaultEncodeProfile = defaultProfile.value;

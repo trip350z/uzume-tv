@@ -26,7 +26,11 @@ export function loadConfig(root, env = process.env, proposed) {
     }
     const port = Number(env.PORT ?? config.port ?? 8780);
     if (!Number.isInteger(port) || port < 1 || port > 65535) invalid('port', '1〜65535の整数を指定してください');
-    const { epgInterval = 15, liveLimit = 4 } = config;
+    const { epgInterval = 15, liveLimit = 4, recordingMinFreeGB = 10 } = config;
+    if (typeof recordingMinFreeGB !== 'number' || !Number.isFinite(recordingMinFreeGB) ||
+        recordingMinFreeGB < 0 || recordingMinFreeGB > 100000) {
+        invalid('recordingMinFreeGB', '空き容量のしきい値を0〜100000 GBで指定してください（0で無効）');
+    }
     if (!Number.isInteger(epgInterval) || epgInterval < 5 || epgInterval > 600) invalid('epgInterval', '5〜600秒の整数を指定してください');
     if (!Number.isInteger(liveLimit) || liveLimit < 1 || liveLimit > 16) invalid('liveLimit', '1〜16の整数を指定してください');
     let source = env.TUNER_URL ?? setting('tunerUrl');
@@ -101,5 +105,5 @@ export function loadConfig(root, env = process.env, proposed) {
         invalid('defaultLiveProfile', '登録済みのライブ用プロファイルを指定してください');
     }
     return { file, config, port, source, directory, ffmpeg, nvencc, destinations, profiles, defaultEncodeProfile, liveProfiles, defaultLiveProfile,
-        epgInterval, liveLimit, recordedFormat, guideHiddenChannels: new Set(hidden) };
+        epgInterval, liveLimit, recordingMinFreeGB, recordedFormat, guideHiddenChannels: new Set(hidden) };
 }
