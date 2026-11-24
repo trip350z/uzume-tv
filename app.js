@@ -1336,15 +1336,15 @@ function confirmRecordingDeletion(row, path) {
     status.setAttribute('role', 'status');
     const actions = node('div', undefined, 'actions');
     actions.append(button('戻る', () => recordingDetails(row, path)), submit);
-    form.append(node('p', 'この項目を録画一覧から外します。チェックを入れたファイルはストレージから削除します。'));
+    form.append(node('p', '削除するTS・MP4を選択してください。残した動画は録画一覧に残ります。両方を削除すると一覧からも削除します。チェックなしではファイルを残して一覧から外します。'));
     if (group.querySelector('input')) form.append(group);
     form.append(actions, status);
     form.onsubmit = async event => {
         event.preventDefault();
         submit.disabled = true;
-        const query = new URLSearchParams({ deleteOriginal: Number(original.checked), deleteConverted: Number(converted.checked) });
+        const query = new URLSearchParams({ deleteOriginal: Number(original.checked), deleteConverted: Number(converted.checked), keepRemaining: Number(original.checked || converted.checked) });
         try {
-            await mutate(path + '?' + query, 'DELETE', undefined, '録画一覧から削除しました。');
+            await mutate(path + '?' + query, 'DELETE', undefined, '削除処理が完了しました。');
             if (form.isConnected) dialog.close();
         } catch (error) { status.textContent = error.message; }
         finally { submit.disabled = false; }
@@ -2123,13 +2123,15 @@ function renderSettings({ config, stations, canApplySettings }) {
         ['dataDirectory', '既定の保存先', ''], ['ffmpeg', 'FFmpeg実行ファイル', 'ffmpeg'], ['nvencc', 'NVEncC実行ファイル', ''],
         ['qsvenc', 'QSVEncC実行ファイル', ''], ['vceenc', 'VCEEncC実行ファイル', ''],
         ['epgInterval', 'EPG更新間隔（秒）', 15], ['liveLimit', '同時ライブ視聴数', 4],
+        ['recordingStartMarginSeconds', '録画開始の余裕（秒、0〜600）', 10],
         ['recordingMinFreeGB', '変換済みTSの自動削除・空き容量（GB、0で無効）', 10],
-        ['recordedFormat', '既定のファイル名書式', '']]) {
+        ['recordedFormat', '既定のファイル名書式', '%YEAR%%MONTH%%DAY%_%TITLE% - [%CHNAME%]']]) {
         const wrapper = node('label', label);
         const input = node('input');
         input.type = typeof fallback === 'number' ? 'number' : 'text';
         if (input.type === 'number') input.required = true;
         input.value = config[key] ?? fallback;
+        if (key === 'recordingStartMarginSeconds') { input.min = 0; input.max = 600; input.step = 1; }
         if (key === 'recordedFormat') {
             input.maxLength = 240;
             input.placeholder = '%YEAR%-%MONTH%-%DAY%_%TITLE%';

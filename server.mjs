@@ -20,7 +20,7 @@ import { readLiveCaptions } from './live-captions.mjs';
 import { parseCommercials, commercialFilters, cutCaptions, hasAmatsukazeLogoData, joinLogoCuts, logoPreview } from './commercials.mjs';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-const { file: configFile, port, source, directory, ffmpeg, nvencc, destinations, profiles, defaultEncodeProfile, liveProfiles, defaultLiveProfile, epgInterval, liveLimit, recordingMinFreeGB, recordedFormat, guideHiddenChannels } = loadConfig(root);
+const { file: configFile, port, source, directory, ffmpeg, nvencc, destinations, profiles, defaultEncodeProfile, liveProfiles, defaultLiveProfile, epgInterval, liveLimit, recordingStartMarginSeconds, recordingMinFreeGB, recordedFormat, guideHiddenChannels } = loadConfig(root);
 const encoderNames = { ffmpeg: 'FFmpeg', nvencc: 'NVEncC', qsvenc: 'QSVEncC', vceenc: 'VCEEncC' };
 const liveProfileOptions = [...liveProfiles].map(([name, profile]) => ({ name, encoder: encoderNames[profile.encoder] }));
 const isHidden = service => guideHiddenChannels.has(service);
@@ -379,7 +379,7 @@ function scheduleDue() {
         if (active.has(row.id) && row.end <= now) active.get(row.id).abort('end');
     }
     const recording = state.reservations.filter(row => active.has(row.id)).map(row => row.service);
-    const due = state.reservations.filter(row => row.status === 'scheduled' && row.start <= now).sort(reservationOrder);
+    const due = state.reservations.filter(row => row.status === 'scheduled' && row.start - recordingStartMarginSeconds * 1000 <= now).sort(reservationOrder);
     for (const row of due) {
         if (isHidden(row.service)) {
             if (row.end <= now) {
@@ -1538,7 +1538,7 @@ async function handleRequest(req, res) {
             if (!canApplySettings) fail(409, 'この起動方法では手動で再起動してください');
             if (applyingSettings || active.size || encoding.size || automaticEdits.size || thumbnails.size || extractingLogo() ||
                 state.reservations.some(r => r.status === 'scheduled' && !isHidden(r.service) &&
-                    r.end > Date.now() && r.start <= Date.now() + 20_000)) {
+                    r.end > Date.now() && r.start - recordingStartMarginSeconds * 1000 <= Date.now() + 20_000)) {
                 fail(409, '処理中、または間もなく録画を開始します。終了後に反映してください');
             }
             const next = loadConfig(root);
@@ -1549,7 +1549,7 @@ async function handleRequest(req, res) {
         if (applyingSettings) fail(503, '設定を反映しています');
         if (path === '/api/settings' && ['GET', 'PUT'].includes(method)) {
             const current = loadConfig(root);
-            const keys = ['port', 'tunerUrl', 'dataDirectory', 'ffmpeg', 'nvencc', 'qsvenc', 'vceenc', 'encodeProfiles', 'defaultEncodeProfile', 'liveProfiles', 'defaultLiveProfile', 'recordingDirectories', 'guideHiddenChannels', 'epgInterval', 'liveLimit', 'recordingMinFreeGB', 'recordedFormat'];
+            const keys = ['port', 'tunerUrl', 'dataDirectory', 'ffmpeg', 'nvencc', 'qsvenc', 'vceenc', 'encodeProfiles', 'defaultEncodeProfile', 'liveProfiles', 'defaultLiveProfile', 'recordingDirectories', 'guideHiddenChannels', 'epgInterval', 'liveLimit', 'recordingStartMarginSeconds', 'recordingMinFreeGB', 'recordedFormat'];
             if (method === 'PUT') {
                 const input = await readBody(req);
                 const next = { ...current.config };
@@ -1683,7 +1683,7 @@ async function handleRequest(req, res) {
                 const stations = ruleServices(rule);
                 return !stations.length || stations.some(id => !isHidden(id));
             });
-            const conflicts = tuners === null ? new Set() : predictConflicts(reservations, serviceMap, tuners, Date.now());
+            const conflicts = tuners === null ? new Set() : predictConflicts(reservations, serviceMap, tuners, Date.now(), recordingStartMarginSeconds);
             return json(res, { tunerCount: tuners?.length ?? null, destinations: [...destinations.keys()],
                 canExtractLogo: Boolean(process.env.DVR_JLS_LOGO_GENERATOR && process.env.DVR_JLS_LOGOS),
                 canAmatsukazeDelogo: Boolean(process.env.DVR_JLS_AMATSUKAZE),
@@ -1751,7 +1751,7 @@ async function handleRequest(req, res) {
                 }
                 if (method === 'PATCH' && !action) {
                     const input = await readBody(req);
-                    if (row.status !== 'scheduled' || active.has(id) || row.start <= Date.now() || isHidden(row.service) ||
+                    if (row.status !== 'scheduled' || active.has(id) || row.start - recordingStartMarginSeconds * 1000 <= Date.now() || isHidden(row.service) ||
                         !state.reservations.includes(row)) fail(409, '録画開始前の予約を編集できます');
                     if (!input.options) fail(400, '録画設定を指定してください');
                     const updated = { ...row };
@@ -1913,6 +1913,13 @@ async function handleRequest(req, res) {
                     } else {
                         removeFile(recordingPath(row));
                         removeFile(recordingPath(row, 'mp4'));
+                    }
+                    if (url.searchParams.get('keepRemaining') === '1' &&
+                        (row.importedVideo
+                            ? fileSize(importedSourcePath(row.importedVideo)) || fileSize(editedVideoPath(row))
+                            : fileSize(recordingPath(row)) || fileSize(recordingPath(row, 'mp4')))) {
+                        save();
+                        return json(res, { retained: true });
                     }
                     removeFile(thumbnailPath(row));
                     removeFile(captionPath(row));

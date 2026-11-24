@@ -26,7 +26,10 @@ export function loadConfig(root, env = process.env, proposed) {
     }
     const port = Number(env.PORT ?? config.port ?? 8780);
     if (!Number.isInteger(port) || port < 1 || port > 65535) invalid('port', '1〜65535の整数を指定してください');
-    const { epgInterval = 15, liveLimit = 4, recordingMinFreeGB = 10 } = config;
+    const { epgInterval = 15, liveLimit = 4, recordingStartMarginSeconds = 10, recordingMinFreeGB = 10 } = config;
+    if (!Number.isInteger(recordingStartMarginSeconds) || recordingStartMarginSeconds < 0 || recordingStartMarginSeconds > 600) {
+        invalid('recordingStartMarginSeconds', '0〜600秒の整数を指定してください');
+    }
     if (typeof recordingMinFreeGB !== 'number' || !Number.isFinite(recordingMinFreeGB) ||
         recordingMinFreeGB < 0 || recordingMinFreeGB > 100000) {
         invalid('recordingMinFreeGB', '空き容量のしきい値を0〜100000 GBで指定してください（0で無効）');
@@ -62,7 +65,7 @@ export function loadConfig(root, env = process.env, proposed) {
         if (!name.trim() || name === 'default' || typeof path !== 'string' || !path.trim()) invalid('recordingDirectories', '保存先の名前とパスを確認してください');
         destinations.set(name, resolve(base, path));
     }
-    const recordedFormat = config.recordedFormat ?? '';
+    const recordedFormat = config.recordedFormat ?? '%YEAR%%MONTH%%DAY%_%TITLE% - [%CHNAME%]';
     if (!validRecordedFormat(recordedFormat)) invalid('recordedFormat', 'ファイル名の文字と変数を確認してください');
     const qsvenc = executable(setting('qsvenc'), base);
     const vceenc = executable(setting('vceenc'), base);
@@ -105,5 +108,5 @@ export function loadConfig(root, env = process.env, proposed) {
         invalid('defaultLiveProfile', '登録済みのライブ用プロファイルを指定してください');
     }
     return { file, config, port, source, directory, ffmpeg, nvencc, destinations, profiles, defaultEncodeProfile, liveProfiles, defaultLiveProfile,
-        epgInterval, liveLimit, recordingMinFreeGB, recordedFormat, guideHiddenChannels: new Set(hidden) };
+        epgInterval, liveLimit, recordingStartMarginSeconds, recordingMinFreeGB, recordedFormat, guideHiddenChannels: new Set(hidden) };
 }

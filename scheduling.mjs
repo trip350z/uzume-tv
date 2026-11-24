@@ -58,10 +58,11 @@ export function reservationOrder(a, b) {
         a.start - b.start || (a.createdAt || 0) - (b.createdAt || 0);
 }
 
-export function predictConflicts(rows, services, tuners, now) {
+export function predictConflicts(rows, services, tuners, now, startMarginSeconds = 0) {
     const accepted = [];
     const conflicts = new Set();
-    const upcoming = rows.filter(row => ['scheduled', 'recording'].includes(row.status) && row.end > now);
+    const upcoming = rows.filter(row => ['scheduled', 'recording'].includes(row.status) && row.end > now)
+        .map(row => ({ ...row, start: row.start - startMarginSeconds * 1000 }));
     upcoming.sort((a, b) => Number(b.status === 'recording') - Number(a.status === 'recording') || reservationOrder(a, b));
     for (const row of upcoming) {
         const overlapping = accepted.filter(r => r.start < row.end && r.end > row.start);
