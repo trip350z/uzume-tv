@@ -2309,7 +2309,9 @@ function renderSettings({ config, stations, canApplySettings }) {
                 .filter(pair => pair.some(Boolean));
             if (new Set(pairs.map(([name]) => name)).size !== pairs.length) throw new Error('保存先の名前が重複しています。');
             const next = Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value.trim() || null]));
-            for (const key of ['port', 'epgInterval', 'liveLimit', 'recordingMinFreeGB']) next[key] = Number(next[key]);
+            for (const [key, input] of Object.entries(inputs)) {
+                if (input.type === 'number') next[key] = Number(input.value);
+            }
             next.recordingDirectories = Object.fromEntries(pairs);
             next.encodeProfiles = JSON.parse(profileInput.value || '[]');
             next.defaultEncodeProfile = defaultProfile.value;
