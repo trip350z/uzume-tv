@@ -798,6 +798,22 @@ function playRecording(row, path, fromStart = false) {
 }
 let recordingFilter = '';
 let recordingGenre = '';
+const recordingSortKey = 'dvr-recording-sort';
+const recordingSortOptions = [['date-desc', '録画日時：新しい順'], ['date-asc', '録画日時：古い順'],
+    ['name-asc', '名前：昇順'], ['name-desc', '名前：降順']];
+let recordingSort = 'date-desc';
+try {
+    const saved = localStorage.getItem(recordingSortKey);
+    if (recordingSortOptions.some(([id]) => id === saved)) recordingSort = saved;
+} catch {}
+const recordingTitleOrder = new Intl.Collator('ja', { numeric: true, sensitivity: 'base' });
+function compareRecordings(a, b, order) {
+    const byDate = (Number(a.start) || 0) - (Number(b.start) || 0);
+    const byName = recordingTitleOrder.compare(a.title || '', b.title || '');
+    const compared = order.startsWith('name-') ? byName || byDate : byDate || byName;
+    return (order.endsWith('-desc') ? -compared : compared) || String(a.id).localeCompare(String(b.id));
+}
+
 function matchesRecordingGenre(row, selected) {
     if (selected === '') return true;
     const values = Array.isArray(row.genres) ? row.genres : [];
@@ -1666,7 +1682,7 @@ function renderReservations() {
             (recordingTab === 'favorites' ? recordingPreferences[r.id]?.favorite &&
                 (!recordingGroup || (assignedRecordingGroup(r.id) || 'ungrouped') === recordingGroup) : resumePosition(r.id)));
     });
-    rows.sort((a, b) => waiting ? a.start - b.start : b.start - a.start);
+    rows.sort((a, b) => waiting ? a.start - b.start : compareRecordings(a, b, recordingSort));
     const list = node('div', undefined, waiting ? 'list' : 'recording-grid');
     if (!rows.length) list.append(node('p', waiting ? '予約はありません。' : '該当する録画はありません。', 'empty'));
     for (const r of rows) {
@@ -1721,7 +1737,14 @@ function renderReservations() {
             const genre = choose([['', 'すべてのジャンル'], ...genres.map((name, id) => [id, name]), [15, 'その他'], ['unknown', 'ジャンル情報なし']], '録画ジャンル');
             genre.value = recordingGenre;
             genre.onchange = () => { recordingGenre = genre.value; renderReservations(); };
-            toolbar.append(search, genre, button('動画を登録', showVideoImport), button('CMカット・ロゴ消しを一括編集', showBatchEdit));
+            const sort = choose(recordingSortOptions, '録画一覧の表示順');
+            sort.value = recordingSort;
+            sort.onchange = () => {
+                recordingSort = sort.value;
+                try { localStorage.setItem(recordingSortKey, recordingSort); } catch {}
+                renderReservations();
+            };
+            toolbar.append(search, genre, sort, button('動画を登録', showVideoImport), button('CMカット・ロゴ消しを一括編集', showBatchEdit));
             for (const [id, title] of [['all', 'すべて'], ['resume', '視聴途中'], ['favorites', 'マイリスト']]) {
                 const tab = button(title, () => { recordingTab = id; renderReservations(); });
                 tab.dataset.recordingTab = id;
