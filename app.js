@@ -797,6 +797,12 @@ function playRecording(row, path, fromStart = false) {
     }
 }
 let recordingFilter = '';
+let recordingGenre = '';
+function matchesRecordingGenre(row, selected) {
+    if (selected === '') return true;
+    const values = Array.isArray(row.genres) ? row.genres : [];
+    return selected === 'unknown' ? !values.length : values.includes(Number(selected));
+}
 let recordingTab = 'all';
 let recordingGroup = '';
 function assignedRecordingGroup(id) {
@@ -1656,7 +1662,7 @@ function renderReservations() {
         if (waiting) return !r.importedVideo && (pending || !hasRecording);
         if (pending || (!hasRecording && !r.importedVideo)) return false;
         const text = [r.title, r.description, channel(r.service)].join(' ').normalize('NFKC').toLowerCase();
-        return text.includes(term) && (recordingTab === 'all' ||
+        return text.includes(term) && matchesRecordingGenre(r, recordingGenre) && (recordingTab === 'all' ||
             (recordingTab === 'favorites' ? recordingPreferences[r.id]?.favorite &&
                 (!recordingGroup || (assignedRecordingGroup(r.id) || 'ungrouped') === recordingGroup) : resumePosition(r.id)));
     });
@@ -1712,7 +1718,10 @@ function renderReservations() {
                 recordingFilter = search.value;
                 renderReservations();
             };
-            toolbar.append(search, button('動画を登録', showVideoImport), button('CMカット・ロゴ消しを一括編集', showBatchEdit));
+            const genre = choose([['', 'すべてのジャンル'], ...genres.map((name, id) => [id, name]), [15, 'その他'], ['unknown', 'ジャンル情報なし']], '録画ジャンル');
+            genre.value = recordingGenre;
+            genre.onchange = () => { recordingGenre = genre.value; renderReservations(); };
+            toolbar.append(search, genre, button('動画を登録', showVideoImport), button('CMカット・ロゴ消しを一括編集', showBatchEdit));
             for (const [id, title] of [['all', 'すべて'], ['resume', '視聴途中'], ['favorites', 'マイリスト']]) {
                 const tab = button(title, () => { recordingTab = id; renderReservations(); });
                 tab.dataset.recordingTab = id;

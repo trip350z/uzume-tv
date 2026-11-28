@@ -179,7 +179,8 @@ async function refresh() {
 function addReservation(program, rule = null, relayOf = null, options = {}) {
     const { service, start, end, title, description } = program;
     const row = { id: randomUUID(), programId: program.id, service, start, end, title, description,
-        status: 'scheduled', rule, relayOf, createdAt: Date.now() };
+        status: 'scheduled', rule, relayOf, createdAt: Date.now(),
+        genres: program.genres || [], genreDetails: program.genreDetails || [] };
     applyRecordingOptions(row, options);
     state.reservations.push(row);
     return row;
@@ -236,6 +237,12 @@ function reconcile() {
         if (!['scheduled', 'recording', 'completed', 'demo'].includes(row.status)) continue;
         const p = latest.get(row.programId);
         if (!p) continue;
+        if (JSON.stringify(row.genres) !== JSON.stringify(p.genres) ||
+            JSON.stringify(row.genreDetails) !== JSON.stringify(p.genreDetails)) {
+            row.genres = p.genres;
+            row.genreDetails = p.genreDetails;
+            changed = true;
+        }
         if (['scheduled', 'recording'].includes(row.status) && ['start', 'end', 'title'].some(key => row[key] !== p[key])) {
             if (row.end !== p.end) row.scheduleChanged = true;
             Object.assign(row, { start: p.start, end: p.end, title: p.title });
