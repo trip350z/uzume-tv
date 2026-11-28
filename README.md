@@ -1,6 +1,14 @@
 # UZUME TV 1.0.0
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Mirakurun / mirakc の番組情報と MPEG-TS 配信を使うローカル録画管理アプリです。Node.js 24で動作します。パッケージのインストールは不要です。
+
+## ライセンス
+
+UZUME TVの本リポジトリで提供する独自コードは[MITライセンス](LICENSE)で公開しています。著作権表記は `Copyright (c) 2026 trip350z` です。
+
+インストーラーが取得するソフトウェア、外部ライブラリー、Kodi SDKなどの第三者の著作物には、それぞれのライセンスが適用されます。本ライセンスは、それらのライセンスや放送映像・番組情報・放送局ロゴなどの権利を変更するものではありません。
 
 ## 画面紹介
 
